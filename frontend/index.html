@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanMyTrip AI — Multi-Agent Travel Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>PlanMyTrip AI</h2>
+        <button id="new-trip-btn" class="btn-secondary">+ New Trip</button>
+      </div>
+
+      <div id="trips-list" class="trips-list">
+      </div>
+
+      <div class="sidebar-footer">
+        <span id="user-display" class="user-badge">Loading...</span>
+        <button id="logout-btn" class="btn-secondary" style="font-size: 0.75rem;">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header style="padding: 1rem 2rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+        <h3 id="active-trip-title" style="font-size: 1.1rem; font-weight: 600;">Select or create a trip</h3>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Autonomous Multi-Agent Mode</span>
+      </header>
+
+      <div id="chat-messages" class="chat-container">
+        <div class="message-card message-agent">
+          Welcome to <strong>PlanMyTrip AI</strong>. Select a trip from the sidebar or click <strong>+ New Trip</strong> to start planning.
+        </div>
+      </div>
+
+      <div id="hitl-panel" class="hitl-panel" style="display: none;">
+        <div class="hitl-info">
+          <h4>Human-in-the-Loop Review Required</h4>
+          <p>Review the generated flight, hotel, and activity options above. Click a card to switch choices, or approve the proposal to synthesize the final plan.</p>
+        </div>
+        <div class="hitl-actions">
+          <button id="hitl-approve-btn" class="btn-success">Approve Plan</button>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <input type="text" id="chat-input" placeholder="e.g. Plan a 4-day trip to Paris under $1200 with cultural sights..." autocomplete="off">
+        <button id="chat-send-btn" class="btn-primary" style="width: auto;">Send</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="trips.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

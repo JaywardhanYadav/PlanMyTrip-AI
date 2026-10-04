@@ -1,0 +1,43 @@
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.graph import END, START, StateGraph
+from ..agents.flight_agent import flight_agent_node
+from ..agents.hotel_agent import hotel_agent_node
+from ..agents.itinerary_agent import itinerary_agent_node
+from ..agents.supervisor import supervisor_node
+from ..agents.synthesis_agent import synthesis_agent_node
+from ..core.state import PlanMyTripState
+from ..guardrails.input_guard import evaluate_input_guardrail
+from .edges import route_guardrail, route_supervisor
+
+
+async def input_guard_node(state: PlanMyTripState) -> dict[str, object]:
+    messages = state.get("messages", [])
+    user_msg = str(messages[-1].content) if messages else "Plan a trip."
+    verdict = await evaluate_input_guardrail(user_msg)
+    return {"guardrail_verdict": verdict}
+
+
+def build_trip_graph(checkpointer: BaseCheckpointSaver | None = None) -> object:
+    builder = StateGraph(PlanMyTripState)
+
+    builder.add_node("input_guard", input_guard_node)
+    builder.add_node("flight_agent", flight_agent_node)
+    builder.add_node("hotel_agent", hotel_agent_node)
+    builder.add_node("itinerary_agent", itinerary_agent_node)
+    builder.add_node("supervisor", supervisor_node)
+    builder.add_node("synthesis_agent", synthesis_agent_node)
+
+    builder.add_edge(START, "input_guard")
+    builder.add_conditional_edges("input_guard", route_guardrail)
+
+    builder.add_edge("flight_agent", "supervisor")
+    builder.add_edge("hotel_agent", "supervisor")
+    builder.add_edge("itinerary_agent", "supervisor")
+
+    builder.add_conditional_edges("supervisor", route_supervisor)
+    builder.add_edge("synthesis_agent", END)
+
+    return builder.compile(
+        checkpointer=checkpointer,
+        interrupt_before=["synthesis_agent"],
+    )
