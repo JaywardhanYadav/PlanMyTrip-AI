@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Self
 
@@ -5,6 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 CENT: Decimal = Decimal("0.01")
+ONE_LAKH: Decimal = Decimal("100000")
+ONE_CRORE: Decimal = Decimal("10000000")
+ONE_THOUSAND: Decimal = Decimal("1000")
 
 
 class CurrencyMismatchError(Exception):
@@ -18,6 +22,58 @@ class CurrencyMismatchError(Exception):
         self.currency_b = currency_b
 
 
+def parse_indian_budget_decimal(raw: str | int | float | Decimal) -> Decimal:
+    if isinstance(raw, (int, float, Decimal)):
+        return Decimal(str(raw)).quantize(CENT, rounding=ROUND_HALF_UP)
+
+    text = str(raw).lower().strip()
+    text = text.replace(",", "").replace("₹", "").replace("rs.", "").replace("rs", "").replace("inr", "").strip()
+
+    crore_match = re.search(r"([\d\.]+)\s*(?:crores?|cr\b)", text)
+    if crore_match:
+        val = Decimal(crore_match.group(1))
+        return (val * ONE_CRORE).quantize(CENT, rounding=ROUND_HALF_UP)
+
+    lakh_match = re.search(r"([\d\.]+)\s*(?:lakhs?|lacs?|lac\b|l\b)", text)
+    if lakh_match:
+        val = Decimal(lakh_match.group(1))
+        return (val * ONE_LAKH).quantize(CENT, rounding=ROUND_HALF_UP)
+
+    k_match = re.search(r"([\d\.]+)\s*(?:thousands?|k\b)", text)
+    if k_match:
+        val = Decimal(k_match.group(1))
+        return (val * ONE_THOUSAND).quantize(CENT, rounding=ROUND_HALF_UP)
+
+    number_match = re.search(r"([\d\.]+)", text)
+    if number_match:
+        return Decimal(number_match.group(1)).quantize(CENT, rounding=ROUND_HALF_UP)
+
+    return Decimal("200000.00")
+
+
+def format_inr_amount(amount: Decimal) -> str:
+    sign = "-" if amount < Decimal("0") else ""
+    abs_amount = abs(amount)
+    parts = f"{abs_amount:.2f}".split(".")
+    int_part = parts[0]
+    dec_part = parts[1]
+
+    if len(int_part) <= 3:
+        formatted_int = int_part
+    else:
+        last_three = int_part[-3:]
+        remaining = int_part[:-3]
+        chunks: list[str] = []
+        while len(remaining) > 2:
+            chunks.insert(0, remaining[-2:])
+            remaining = remaining[:-2]
+        if remaining:
+            chunks.insert(0, remaining)
+        formatted_int = ",".join(chunks) + "," + last_three
+
+    return f"₹{sign}{formatted_int}.{dec_part}"
+
+
 class Money(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -27,7 +83,7 @@ class Money(BaseModel):
     )
 
     currency: str = Field(
-        default="USD",
+        default="INR",
         min_length=3,
         max_length=3,
         description="Uppercase 3-letter ISO-4217 currency code.",
@@ -102,7 +158,7 @@ class Money(BaseModel):
             )
 
     @classmethod
-    def zero(cls, currency: str = "USD") -> "Money":
+    def zero(cls, currency: str = "INR") -> "Money":
         return cls(
             amount=Decimal("0.00"),
             currency=currency,
@@ -112,18 +168,34 @@ class Money(BaseModel):
     def from_str(
         cls,
         amount_str: str,
-        currency: str = "USD",
+        currency: str = "INR",
     ) -> "Money":
-        clean_str = amount_str.replace("$", "").replace(",", "").strip()
-
+        dec_amount = parse_indian_budget_decimal(amount_str)
         return cls(
-            amount=Decimal(clean_str),
+            amount=dec_amount,
             currency=currency,
         )
 
     def to_formatted_str(self) -> str:
+        if self.currency == "INR":
+            return format_inr_amount(self.amount)
         formatted_amount = f"{self.amount:,.2f}"
         return f"{formatted_amount} {self.currency}"
+
+    def to_words(self) -> str:
+        if self.currency != "INR":
+            return self.to_formatted_str()
+        abs_val = abs(self.amount)
+        if abs_val >= ONE_CRORE:
+            cr_val = abs_val / ONE_CRORE
+            return f"{cr_val:.2f}".rstrip("0").rstrip(".") + " Crore INR"
+        elif abs_val >= ONE_LAKH:
+            lakh_val = abs_val / ONE_LAKH
+            return f"{lakh_val:.2f}".rstrip("0").rstrip(".") + " Lakh INR"
+        elif abs_val >= ONE_THOUSAND:
+            k_val = abs_val / ONE_THOUSAND
+            return f"{k_val:.2f}".rstrip("0").rstrip(".") + " Thousand INR"
+        return format_inr_amount(self.amount)
 
 
 class BudgetReconciliation(BaseModel):
@@ -212,4 +284,4 @@ def reconcile_trip_budget(
         remaining_balance=remaining_balance,
         is_over_budget=is_over,
         overage_amount=overage,
-    )
+    )

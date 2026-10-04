@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from ...core.database import create_checkpointer_pool, setup_checkpointer
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from ...core.database import create_checkpointer_pool, get_db_session, setup_checkpointer
 from ...graph.builder import build_trip_graph
+from ...models.trip_thread import TripThread
 from ...models.user import User
 from ...schemas.hitl import HitlResumeRequest
 from ..dependencies import get_current_user, verify_thread_ownership
@@ -31,11 +34,11 @@ async def get_thread_state(
                 serialized[k] = [m.content for m in v]
             elif isinstance(v, list):
                 serialized[k] = [
-                    item.model_dump() if hasattr(item, "model_dump") else item
+                    item.model_dump(mode="json") if hasattr(item, "model_dump") else item
                     for item in v
                 ]
             elif hasattr(v, "model_dump"):
-                serialized[k] = v.model_dump()
+                serialized[k] = v.model_dump(mode="json")
             else:
                 serialized[k] = v
 
@@ -51,8 +54,20 @@ async def get_thread_state(
 async def resume_hitl(
     req: HitlResumeRequest,
     user: User = Depends(get_current_user),
-    _thread: object = Depends(verify_thread_ownership),
+    session: AsyncSession = Depends(get_db_session),
 ) -> dict[str, object]:
+    stmt = select(TripThread).where(
+        TripThread.langgraph_thread_id == req.thread_id,
+        TripThread.user_id == user.id,
+    )
+    result = await session.execute(stmt)
+    thread = result.scalar_one_or_none()
+    if not thread:
+        raise HTTPException(
+            status_code=403,
+            detail="Access forbidden: thread does not belong to authenticated user",
+        )
+
     pool = create_checkpointer_pool()
     await pool.open()
     try:

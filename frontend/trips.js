@@ -38,9 +38,10 @@ async function loadTrips() {
       item.className = `trip-item ${trip.id === activeTripId ? "active" : ""}`;
       item.onclick = () => selectTrip(trip);
 
+      const formattedBudget = parseFloat(trip.budget_total).toLocaleString("en-IN");
       item.innerHTML = `
         <div class="trip-item-title">${escapeHtml(trip.title)}</div>
-        <div class="trip-item-meta">${escapeHtml(trip.destination)} • $${parseFloat(trip.budget_total).toFixed(0)}</div>
+        <div class="trip-item-meta">${escapeHtml(trip.destination)} • ₹${formattedBudget}</div>
       `;
       container.appendChild(item);
     });
@@ -55,10 +56,13 @@ async function loadTrips() {
 
 async function createNewTrip() {
   const token = localStorage.getItem("planmytrip_token");
-  const destination = prompt("Enter your destination (e.g. Paris, Tokyo, London):");
+  const destination = prompt("Enter your destination (e.g. Goa, Mumbai, Delhi, Paris):");
   if (!destination) return;
 
-  const title = prompt("Enter a trip title (e.g. Winter in Paris):", `Trip to ${destination}`);
+  const budgetInput = prompt("Enter your budget (e.g. 2 lakhs, 5 lakhs, 1.5L, 50000):", "2 lakhs");
+  if (!budgetInput) return;
+
+  const title = prompt("Enter a trip title (e.g. Vacation in " + destination + "):", `Trip to ${destination}`);
   if (!title) return;
 
   try {
@@ -71,8 +75,8 @@ async function createNewTrip() {
       body: JSON.stringify({
         title,
         destination,
-        budget_total: "1500.00",
-        currency: "USD",
+        budget_total: budgetInput,
+        currency: "INR",
       }),
     });
 

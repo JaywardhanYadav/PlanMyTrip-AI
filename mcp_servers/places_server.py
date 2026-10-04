@@ -28,6 +28,7 @@ class ActivityResult(BaseModel):
     timing: str
     duration_minutes: int
     cost: str
+    currency: str = "INR"
     is_free: bool
     weather_sensitive: bool
     source_provenance: str
@@ -84,8 +85,8 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
 
     if call.name == "search_hotels":
         nights = int(args.get("nights", 3))
-        rate_1 = Decimal("145.00")
-        rate_2 = Decimal("210.00")
+        rate_1 = Decimal("5500.00")
+        rate_2 = Decimal("8500.00")
 
         hotels = [
             HotelResult(
@@ -94,7 +95,7 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
                 location=f"Central District, {destination}",
                 nightly_rate=str(rate_1),
                 total_rate=str(rate_1 * Decimal(nights)),
-                currency="USD",
+                currency="INR",
                 cancellation_terms="Free cancellation up to 48 hours before check-in.",
                 source_provenance="tavily" if TAVILY_API_KEY else "cached",
                 source_citation="https://example.com/hotels/grand-plaza",
@@ -105,7 +106,7 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
                 location=f"Old Town, {destination}",
                 nightly_rate=str(rate_2),
                 total_rate=str(rate_2 * Decimal(nights)),
-                currency="USD",
+                currency="INR",
                 cancellation_terms="Non-refundable special rate.",
                 source_provenance="tavily" if TAVILY_API_KEY else "cached",
                 source_citation="https://example.com/hotels/heritage-inn",
@@ -118,11 +119,12 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
         activities = [
             ActivityResult(
                 option_id=f"act_{destination.lower()}_01",
-                title=f"{destination} Guided Walking & Historical Tour",
+                title=f"{destination} Guided Walking & Cultural Tour",
                 location=f"Historic District, {destination}",
                 timing=f"{date_str}T10:00:00Z",
                 duration_minutes=150,
-                cost="35.00",
+                cost="1500.00",
+                currency="INR",
                 is_free=False,
                 weather_sensitive=True,
                 source_provenance="tavily" if TAVILY_API_KEY else "cached",
@@ -130,11 +132,12 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
             ),
             ActivityResult(
                 option_id=f"act_{destination.lower()}_02",
-                title=f"{destination} National Museum & Art Gallery",
+                title=f"{destination} Heritage Museum & Art Gallery",
                 location=f"Museum Row, {destination}",
                 timing=f"{date_str}T14:30:00Z",
                 duration_minutes=120,
                 cost="0.00",
+                currency="INR",
                 is_free=True,
                 weather_sensitive=False,
                 source_provenance="tavily" if TAVILY_API_KEY else "cached",
@@ -142,6 +145,7 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
             ),
         ]
         return {"status": "success", "activities": [a.model_dump() for a in activities]}
+
 
     raise HTTPException(status_code=404, detail=f"Tool {call.name} not found")
 

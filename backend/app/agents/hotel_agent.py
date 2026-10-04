@@ -5,11 +5,21 @@ from ..mcp_client.registry import MCPRegistry
 
 
 async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    destination = "Paris"
+    destination = "Goa"
     messages = state.get("messages", [])
     if messages:
         last_msg = str(messages[-1].content).lower()
-        if "london" in last_msg:
+        if "goa" in last_msg:
+            destination = "Goa"
+        elif "mumbai" in last_msg:
+            destination = "Mumbai"
+        elif "delhi" in last_msg:
+            destination = "Delhi"
+        elif "bangalore" in last_msg:
+            destination = "Bangalore"
+        elif "paris" in last_msg:
+            destination = "Paris"
+        elif "london" in last_msg:
             destination = "London"
         elif "tokyo" in last_msg:
             destination = "Tokyo"
@@ -28,15 +38,16 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
     if isinstance(hotels_raw, list):
         for item in hotels_raw:
             if isinstance(item, dict):
-                nightly = str(item.get("nightly_rate", "120.00"))
-                total = str(item.get("total_rate", "360.00"))
+                nightly = str(item.get("nightly_rate", "5500.00"))
+                total = str(item.get("total_rate", "16500.00"))
+                curr = str(item.get("currency", "INR"))
                 parsed_hotels.append(
                     HotelOption(
                         option_id=str(item.get("option_id", f"ht_{destination}_01")),
-                        name=str(item.get("name", f"{destination} City Hotel")),
+                        name=str(item.get("name", f"{destination} Grand Resort")),
                         location=str(item.get("location", f"Central {destination}")),
-                        nightly_rate=Money(amount=Decimal(nightly), currency="USD"),
-                        total_rate=Money(amount=Decimal(total), currency="USD"),
+                        nightly_rate=Money(amount=Decimal(nightly), currency=curr),
+                        total_rate=Money(amount=Decimal(total), currency=curr),
                         cancellation_terms=str(item.get("cancellation_terms", "Free cancellation within 24h.")),
                         source_provenance="cached",
                         source_citation=str(item.get("source_citation", "https://example.com/hotels")),
@@ -47,13 +58,13 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
         parsed_hotels = [
             HotelOption(
                 option_id=f"hotel_{destination.lower()}_primary",
-                name=f"{destination} Central Boutique",
-                location=f"Downtown, {destination}",
-                nightly_rate=Money(amount=Decimal("130.00"), currency="USD"),
-                total_rate=Money(amount=Decimal("390.00"), currency="USD"),
+                name=f"{destination} Heritage Resort & Spa",
+                location=f"Prime Area, {destination}",
+                nightly_rate=Money(amount=Decimal("6500.00"), currency="INR"),
+                total_rate=Money(amount=Decimal("19500.00"), currency="INR"),
                 cancellation_terms="Free cancellation up to 48h before arrival.",
                 source_provenance="cached",
-                source_citation="https://example.com/hotels/central",
+                source_citation="https://example.com/hotels/resort",
             )
         ]
 
@@ -62,3 +73,4 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
         "hotel_options": parsed_hotels,
         "selected_hotel_id": selected_id,
     }
+

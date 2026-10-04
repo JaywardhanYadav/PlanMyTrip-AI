@@ -73,9 +73,9 @@ async def list_tools() -> dict[str, list[ToolDefinition]]:
 
 async def fetch_tavily_benchmark(origin: str, destination: str, date_str: str) -> tuple[Decimal, str | None]:
     if not TAVILY_API_KEY:
-        return Decimal("450.00"), None
+        return Decimal("16500.00"), None
 
-    query = f"average roundtrip flight price from {origin} to {destination} in {date_str}"
+    query = f"average roundtrip flight price in INR from {origin} to {destination} in {date_str}"
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             resp = await client.post(
@@ -87,10 +87,10 @@ async def fetch_tavily_benchmark(origin: str, destination: str, date_str: str) -
                 results = data.get("results", [])
                 if results:
                     citation = results[0].get("url")
-                    return Decimal("480.00"), citation
+                    return Decimal("18500.00"), citation
         except Exception:
             pass
-    return Decimal("450.00"), None
+    return Decimal("16500.00"), None
 
 
 @app.post("/call")
@@ -107,20 +107,20 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
 
     option_1 = FlightOptionResult(
         option_id=f"flight_{origin}_{destination}_01",
-        carrier="Skyways Express",
+        carrier="Air India",
         legs=[
             FlightLegSchema(
                 origin_iata=origin,
                 destination_iata=destination,
-                carrier_code="SE",
-                flight_number="101",
+                carrier_code="AI",
+                flight_number="804",
                 departure_time=f"{departure_date}T08:30:00Z",
                 arrival_time=f"{departure_date}T11:45:00Z",
                 duration_minutes=195,
             )
         ],
         fare_amount=str(benchmark_fare),
-        currency="USD",
+        currency="INR",
         is_estimate=True,
         source_provenance="aviationstack" if AVIATIONSTACK_API_KEY else "tavily",
         source_citation=citation,
@@ -128,20 +128,20 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
 
     option_2 = FlightOptionResult(
         option_id=f"flight_{origin}_{destination}_02",
-        carrier="Global Airways",
+        carrier="IndiGo",
         legs=[
             FlightLegSchema(
                 origin_iata=origin,
                 destination_iata=destination,
-                carrier_code="GA",
-                flight_number="405",
+                carrier_code="6E",
+                flight_number="521",
                 departure_time=f"{departure_date}T14:15:00Z",
                 arrival_time=f"{departure_date}T17:30:00Z",
                 duration_minutes=195,
             )
         ],
-        fare_amount=str(benchmark_fare + Decimal("75.00")),
-        currency="USD",
+        fare_amount=str(benchmark_fare + Decimal("4500.00")),
+        currency="INR",
         is_estimate=True,
         source_provenance="aviationstack" if AVIATIONSTACK_API_KEY else "tavily",
         source_citation=citation,
@@ -151,6 +151,7 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
         "status": "success",
         "options": [option_1.model_dump(), option_2.model_dump()],
     }
+
 
 
 if __name__ == "__main__":

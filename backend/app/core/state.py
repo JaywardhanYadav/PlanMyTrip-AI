@@ -321,6 +321,8 @@ class PlanMyTripState(TypedDict, total=False):
 
     guardrail_verdict: GuardrailVerdict | None
 
+    trip_budget: Money | None
+
     budget_reconciliation: BudgetReconciliation | None
 
     flight_options: Annotated[

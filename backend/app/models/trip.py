@@ -42,12 +42,12 @@ class Trip(UUIDBase, TimestampMixin):
     budget_total: Mapped[Decimal] = mapped_column(
         Numeric(12, 2),
         nullable=False,
-        default=Decimal("0.00"),
+        default=Decimal("200000.00"),
     )
     currency: Mapped[str] = mapped_column(
         String(3),
         nullable=False,
-        default="USD",
+        default="INR",
     )
     status: Mapped[str] = mapped_column(
         String(50),

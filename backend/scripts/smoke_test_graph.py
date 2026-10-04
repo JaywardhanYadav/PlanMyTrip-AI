@@ -1,5 +1,6 @@
 import asyncio
 import sys
+import uuid
 
 sys.path.insert(0, "backend")
 
@@ -15,11 +16,14 @@ async def smoke_test() -> None:
         checkpointer = await setup_checkpointer(pool)
         graph = build_trip_graph(checkpointer=checkpointer)
 
-        thread_id = "smoke_test_thread_001"
+        thread_id = f"smoke_test_inr_{uuid.uuid4().hex[:8]}"
         config = {"configurable": {"thread_id": thread_id}}
 
+
         print(f"[*] Executing smoke test on thread: {thread_id}")
-        initial_input = {"messages": [HumanMessage(content="Plan a trip to Paris on Dec 1st under $1500")]}
+        initial_input = {"messages": [HumanMessage(content="Plan a trip to Goa on Dec 1st with budget 2 lakhs")]}
+
+
 
         async for update in graph.astream(initial_input, config=config):
             for node, values in update.items():

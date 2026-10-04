@@ -95,12 +95,13 @@ function renderOptionsGrid() {
   let html = "";
 
   currentOptions.flights.forEach((f) => {
+    const formattedFare = parseFloat(f.fare.amount).toLocaleString("en-IN");
     html += `
       <div class="option-card">
         <div>
           <span class="option-badge">✈️ Flight Option</span>
           <div class="option-title">${escapeHtml(f.carrier)}</div>
-          <div class="option-price">$${parseFloat(f.fare.amount).toFixed(2)} ${escapeHtml(f.fare.currency)}</div>
+          <div class="option-price">₹${formattedFare} ${escapeHtml(f.fare.currency)}</div>
           <div class="option-meta">
             Duration: ${f.legs[0]?.duration_minutes || 180} mins<br>
             Route: ${f.legs[0]?.origin_iata} ➔ ${f.legs[0]?.destination_iata}
@@ -112,15 +113,17 @@ function renderOptionsGrid() {
   });
 
   currentOptions.hotels.forEach((h) => {
+    const formattedTotal = parseFloat(h.total_rate.amount).toLocaleString("en-IN");
+    const formattedNightly = parseFloat(h.nightly_rate.amount).toLocaleString("en-IN");
     html += `
       <div class="option-card">
         <div>
           <span class="option-badge" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7;">🏨 Hotel Option</span>
           <div class="option-title">${escapeHtml(h.name)}</div>
-          <div class="option-price">$${parseFloat(h.total_rate.amount).toFixed(2)} total</div>
+          <div class="option-price">₹${formattedTotal} total</div>
           <div class="option-meta">
             ${escapeHtml(h.location)}<br>
-            Nightly: $${parseFloat(h.nightly_rate.amount).toFixed(2)}
+            Nightly: ₹${formattedNightly}
           </div>
         </div>
         <button class="btn-secondary" onclick="selectHotelOption('${h.option_id}')">Select Hotel</button>

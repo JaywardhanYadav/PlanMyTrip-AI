@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from ..core.money import Money
 from ..core.state import ActivityOption, PlanMyTripState, WeatherOutlook
@@ -6,11 +6,21 @@ from ..mcp_client.registry import MCPRegistry
 
 
 async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    destination = "Paris"
+    destination = "Goa"
     messages = state.get("messages", [])
     if messages:
         last_msg = str(messages[-1].content).lower()
-        if "london" in last_msg:
+        if "goa" in last_msg:
+            destination = "Goa"
+        elif "mumbai" in last_msg:
+            destination = "Mumbai"
+        elif "delhi" in last_msg:
+            destination = "Delhi"
+        elif "bangalore" in last_msg:
+            destination = "Bangalore"
+        elif "paris" in last_msg:
+            destination = "Paris"
+        elif "london" in last_msg:
             destination = "London"
         elif "tokyo" in last_msg:
             destination = "Tokyo"
@@ -30,10 +40,10 @@ async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
                     destination=str(outlook_raw.get("destination", destination)),
                     target_date=date.fromisoformat(str(outlook_raw.get("target_date", "2026-12-01"))),
                     source="climate_normal" if outlook_raw.get("source") == "climate_normal" else "forecast",
-                    temp_high_celsius=Decimal(str(outlook_raw.get("temp_high_celsius", "20.0"))),
-                    temp_low_celsius=Decimal(str(outlook_raw.get("temp_low_celsius", "12.0"))),
-                    condition=str(outlook_raw.get("condition", "Partly Cloudy")),
-                    precipitation_probability=Decimal(str(outlook_raw.get("precipitation_probability", "0.15"))),
+                    temp_high_celsius=Decimal(str(outlook_raw.get("temp_high_celsius", "28.0"))),
+                    temp_low_celsius=Decimal(str(outlook_raw.get("temp_low_celsius", "22.0"))),
+                    condition=str(outlook_raw.get("condition", "Sunny Beach Weather")),
+                    precipitation_probability=Decimal(str(outlook_raw.get("precipitation_probability", "0.05"))),
                 )
             )
     except Exception:
@@ -45,10 +55,10 @@ async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
                 destination=destination,
                 target_date=date.fromisoformat("2026-12-01"),
                 source="climate_normal",
-                temp_high_celsius=Decimal("21.0"),
-                temp_low_celsius=Decimal("13.0"),
-                condition="Seasonal Typical (Mild)",
-                precipitation_probability=Decimal("0.10"),
+                temp_high_celsius=Decimal("30.0"),
+                temp_low_celsius=Decimal("23.0"),
+                condition="Sunny & Clear",
+                precipitation_probability=Decimal("0.05"),
             )
         ]
 
@@ -63,14 +73,16 @@ async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
             for item in raw_acts:
                 if isinstance(item, dict):
                     cost_val = str(item.get("cost", "0.00"))
+                    curr = str(item.get("currency", "INR"))
+                    t_str = str(item.get("timing", "2026-12-01T10:00:00Z")).replace("Z", "+00:00")
                     activities.append(
                         ActivityOption(
                             option_id=str(item.get("option_id", f"act_{destination}_01")),
-                            title=str(item.get("title", f"{destination} Sightseeing")),
+                            title=str(item.get("title", f"{destination} Sightseeing Tour")),
                             location=str(item.get("location", destination)),
-                            timing=str(item.get("timing", "2026-12-01T10:00:00Z")),  # type: ignore[arg-type]
+                            timing=datetime.fromisoformat(t_str),
                             duration_minutes=int(item.get("duration_minutes", 120)),
-                            cost=Money(amount=Decimal(cost_val), currency="USD"),
+                            cost=Money(amount=Decimal(cost_val), currency=curr),
                             is_free=bool(item.get("is_free", False)),
                             weather_sensitive=bool(item.get("weather_sensitive", False)),
                             source_provenance="cached",
@@ -84,15 +96,15 @@ async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
         activities = [
             ActivityOption(
                 option_id=f"act_{destination.lower()}_primary",
-                title=f"{destination} Historic City Walk",
-                location=f"Old Town, {destination}",
-                timing="2026-12-01T10:00:00Z",  # type: ignore[arg-type]
-                duration_minutes=120,
-                cost=Money.zero("USD"),
-                is_free=True,
+                title=f"{destination} Heritage City & Sunset Cruise",
+                location=f"Harbor Front, {destination}",
+                timing=datetime.fromisoformat("2026-12-01T10:00:00+00:00"),
+                duration_minutes=150,
+                cost=Money(amount=Decimal("1500.00"), currency="INR"),
+                is_free=False,
                 weather_sensitive=True,
                 source_provenance="cached",
-                source_citation="https://example.com/city-walk",
+                source_citation="https://example.com/cruise",
             )
         ]
 
@@ -102,3 +114,4 @@ async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
         "activity_options": activities,
         "selected_activity_ids": selected_ids,
     }
+

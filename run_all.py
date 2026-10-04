@@ -18,7 +18,7 @@ def main() -> None:
         ("Flight MCP Server (8001)", [python_exe, os.path.join(root_dir, "mcp_servers", "flight_server.py")]),
         ("Weather MCP Server (8002)", [python_exe, os.path.join(root_dir, "mcp_servers", "weather_server.py")]),
         ("Places MCP Server (8003)", [python_exe, os.path.join(root_dir, "mcp_servers", "places_server.py")]),
-        ("FastAPI Backend & Web SPA (8000)", [python_exe, "-m", "uvicorn", "app.main:app", "--port", "8000"]),
+        ("FastAPI Backend & Web SPA (8000)", [python_exe, "-m", "app.main"]),
     ]
 
     processes: list[subprocess.Popen[bytes]] = []

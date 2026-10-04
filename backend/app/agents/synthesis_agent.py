@@ -22,7 +22,12 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
     selected_activities = [a for a in activity_options if a.option_id in selected_act_ids]
     activity_costs = [a.cost for a in selected_activities]
 
-    total_cap = Money(amount=Decimal("1500.00"), currency="USD")
+    trip_budget = state.get("trip_budget")
+    if trip_budget and isinstance(trip_budget, Money):
+        total_cap = trip_budget
+    else:
+        total_cap = Money(amount=Decimal("200000.00"), currency="INR")
+
     budget_result = reconcile_trip_budget(
         total_cap=total_cap,
         flight_costs=flight_costs,
@@ -42,10 +47,11 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
         f"- Flights: {flight_desc}\n"
         f"- Hotel: {hotel_desc}\n"
         f"- Activities: {activities_desc}\n"
-        f"- Budget Cap: {budget_result.total_cap.to_formatted_str()}\n"
-        f"- Committed Total: {budget_result.committed_total.to_formatted_str()}\n"
-        f"- Remaining Balance: {budget_result.remaining_balance.to_formatted_str()}\n"
-        f"Provide a structured, beautifully formatted markdown travel itinerary with daily breakdown and cost summary. "
+        f"- Budget Cap: {budget_result.total_cap.to_formatted_str()} ({budget_result.total_cap.to_words()})\n"
+        f"- Committed Total: {budget_result.committed_total.to_formatted_str()} ({budget_result.committed_total.to_words()})\n"
+        f"- Remaining Balance: {budget_result.remaining_balance.to_formatted_str()} ({budget_result.remaining_balance.to_words()})\n"
+        f"Provide a structured, beautifully formatted markdown travel itinerary with daily breakdown and cost summary in Indian Rupees (INR, ₹). "
+        f"Always use Indian currency notations like ₹ and Lakhs/Thousands. "
         f"Mention that all prices are indicative estimates."
     )
 
@@ -53,7 +59,7 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
         response = await client.chat.completions.create(
             model=settings.OPENAI_MODEL_WORKER,
             messages=[
-                {"role": "system", "content": "You are a professional travel synthesis consultant."},
+                {"role": "system", "content": "You are a professional travel synthesis consultant specializing in Indian and global travel planning in Indian Rupees (INR)."},
                 {"role": "user", "content": prompt},
             ],
             max_tokens=settings.OPENAI_MAX_TOKENS_WORKER,
@@ -68,7 +74,7 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
             f"- **Scheduled Activities**: {activities_desc}\n\n"
             f"**Total Estimated Cost**: {budget_result.committed_total.to_formatted_str()} "
             f"(Remaining: {budget_result.remaining_balance.to_formatted_str()})\n\n"
-            f"*Note: All prices are indicative estimates.*"
+            f"*Note: All prices are indicative estimates in Indian Rupees (INR).*"
         )
 
     verdict = evaluate_output_guardrail(draft)
