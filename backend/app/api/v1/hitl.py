@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ...core.database import create_checkpointer_pool, get_db_session, setup_checkpointer
 from ...graph.builder import build_trip_graph
+from ...models.chat_message import ChatMessage
 from ...models.trip_thread import TripThread
 from ...models.user import User
 from ...schemas.hitl import HitlResumeRequest
@@ -85,6 +86,16 @@ async def resume_hitl(
         res = await graph.ainvoke(None, config=config)
 
         draft = res.get("itinerary_draft", "")
+        if draft and thread.trip_id:
+            assistant_msg = ChatMessage(
+                trip_id=thread.trip_id,
+                user_id=user.id,
+                role="assistant",
+                content=str(draft),
+            )
+            session.add(assistant_msg)
+            await session.commit()
+
         return {
             "status": "resumed",
             "itinerary_draft": draft,

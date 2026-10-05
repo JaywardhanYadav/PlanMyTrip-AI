@@ -6,7 +6,9 @@ from ..mcp_client.registry import MCPRegistry
 
 
 async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    destination = "Goa"
+    destination = state.get("destination") or "Goa"
+    target_date = state.get("start_date") or "2026-12-01"
+
     messages = state.get("messages", [])
     if messages:
         last_msg = str(messages[-1].content).lower()
@@ -31,7 +33,7 @@ async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
     try:
         w_res = await registry.weather_client.call_tool(
             name="get_weather_forecast",
-            arguments={"destination": destination, "target_date": "2026-12-01"},
+            arguments={"destination": destination, "target_date": target_date},
         )
         outlook_raw = w_res.get("outlook", {})
         if isinstance(outlook_raw, dict):

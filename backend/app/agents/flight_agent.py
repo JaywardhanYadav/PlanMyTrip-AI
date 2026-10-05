@@ -5,40 +5,61 @@ from ..core.state import FlightLeg, FlightOption, PlanMyTripState
 from ..mcp_client.registry import MCPRegistry
 
 
+def resolve_iata(name: str | None, default: str) -> str:
+    if not name:
+        return default
+    clean = name.upper()
+    mapping = {
+        "DEL": "DEL", "DELHI": "DEL", "NEW DELHI": "DEL",
+        "BOM": "BOM", "MUMBAI": "BOM", "BOMBAY": "BOM",
+        "BLR": "BLR", "BANGALORE": "BLR", "BENGALURU": "BLR",
+        "GOI": "GOI", "GOA": "GOI", "GOX": "GOI", "DABOLIM": "GOI",
+        "CCU": "CCU", "KOLKATA": "CCU",
+        "HYD": "HYD", "HYDERABAD": "HYD",
+        "MAA": "MAA", "CHENNAI": "MAA",
+        "JAI": "JAI", "JAIPUR": "JAI",
+        "PNQ": "PNQ", "PUNE": "PNQ",
+        "CDG": "CDG", "PARIS": "CDG",
+        "LHR": "LHR", "LONDON": "LHR",
+        "NRT": "NRT", "TOKYO": "NRT",
+    }
+    for k, v in mapping.items():
+        if k in clean:
+            return v
+    return default
+
+
 async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    destination = "GOI"
-    origin = "DEL"
+    origin = resolve_iata(state.get("departure_station"), "DEL")
+    destination = resolve_iata(state.get("destination"), "GOI")
+    dep_date = state.get("start_date") or "2026-12-01"
 
     messages = state.get("messages", [])
     if messages:
         last_msg = str(messages[-1].content).lower()
         if "goa" in last_msg or "goi" in last_msg:
             destination = "GOI"
-            origin = "DEL"
         elif "mumbai" in last_msg or "bom" in last_msg:
             destination = "BOM"
-            origin = "DEL"
         elif "delhi" in last_msg or "del" in last_msg:
             destination = "DEL"
-            origin = "BOM"
         elif "bangalore" in last_msg or "blr" in last_msg:
             destination = "BLR"
-            origin = "DEL"
-        elif "paris" in last_msg or "par" in last_msg or "cdg" in last_msg:
+        elif "paris" in last_msg or "cdg" in last_msg:
             destination = "CDG"
-            origin = "DEL"
         elif "london" in last_msg or "lhr" in last_msg:
             destination = "LHR"
-            origin = "DEL"
         elif "tokyo" in last_msg or "nrt" in last_msg:
             destination = "NRT"
-            origin = "DEL"
+
+    if origin == destination:
+        origin = "BOM" if destination == "DEL" else "DEL"
 
     registry = MCPRegistry()
     try:
         raw_result = await registry.flight_client.call_tool(
             name="search_flight_offers",
-            arguments={"origin": origin, "destination": destination, "departure_date": "2026-12-01"},
+            arguments={"origin": origin, "destination": destination, "departure_date": dep_date},
         )
         raw_options = raw_result.get("options", [])
     except Exception:

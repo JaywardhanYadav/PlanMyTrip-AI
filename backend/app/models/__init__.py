@@ -1,5 +1,7 @@
 from .audit_log import AuditLog
 from .base import Base, TimestampMixin, UUIDBase
+from .chat_message import ChatMessage
+from .conversation_intake import ConversationIntake
 from .raw_payload import RawPayload
 from .trip import Trip
 from .trip_thread import TripThread
@@ -12,6 +14,9 @@ __all__ = [
     "User",
     "Trip",
     "TripThread",
+    "ChatMessage",
+    "ConversationIntake",
     "RawPayload",
     "AuditLog",
 ]
+

@@ -1,5 +1,6 @@
+from datetime import date
 from typing import TYPE_CHECKING
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, Date, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import TimestampMixin, UUIDBase
@@ -19,9 +20,17 @@ class User(UUIDBase, TimestampMixin):
         index=True,
         nullable=False,
     )
+    name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
     hashed_password: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
+    )
+    birth_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
     )
     is_active: Mapped[bool] = mapped_column(
         Boolean,

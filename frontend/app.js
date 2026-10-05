@@ -1,17 +1,66 @@
 let currentOptions = { flights: [], hotels: [], activities: [] };
 
+function formatCurrentTime() {
+  const d = new Date();
+  let hours = d.getHours();
+  const minutes = d.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const minsStr = minutes < 10 ? "0" + minutes : minutes;
+  return `${hours}:${minsStr} ${ampm}`;
+}
+
 async function sendChatMessage() {
   const input = document.getElementById("chat-input");
   const message = input.value.trim();
-  if (!message || !activeThreadId) return;
+  if (!message) return;
 
   input.value = "";
   appendUserMessage(message);
 
   const token = localStorage.getItem("planmytrip_token");
-  const agentMessageDiv = appendAgentMessage("Planning in progress...");
+  const agentMessageDiv = appendAgentMessage("Planning your trip with multi-agent orchestration...");
 
-  const streamUrl = `${API_BASE}/chat/stream?thread_id=${encodeURIComponent(activeThreadId)}&message=${encodeURIComponent(message)}`;
+  updateAgentStatus("flight", "Searching flight routes...", "60%");
+  updateAgentStatus("hotel", "Scanning top properties...", "40%");
+  updateAgentStatus("itinerary", "Analyzing preferences...", "30%");
+
+  let threadIdToUse = activeThreadId;
+  if (!threadIdToUse) {
+    try {
+      const initRes = await fetch(`${API_BASE}/trips`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: message.substring(0, 30) + (message.length > 30 ? "..." : ""),
+          destination: message.includes("Japan") ? "Japan" : (message.includes("Kerala") ? "Kerala" : (message.includes("Shimla") || message.includes("Simila") ? "Shimla" : (message.includes("Philippines") ? "Philippines" : (message.includes("Goa") ? "Goa" : "Travel Destination")))),
+          departure_station: "Delhi (DEL)",
+          budget_total: "2 lakhs",
+          currency: "INR"
+        })
+      });
+      if (initRes.ok) {
+        const newTrip = await initRes.json();
+        activeTripId = newTrip.id;
+        activeThreadId = newTrip.thread_id;
+        threadIdToUse = newTrip.thread_id;
+        await loadTrips();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (!threadIdToUse) {
+    agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Please select or create a trip first from "+ New Trip".</span>`;
+    return;
+  }
+
+  const streamUrl = `${API_BASE}/chat/stream?thread_id=${encodeURIComponent(threadIdToUse)}&message=${encodeURIComponent(message)}`;
 
   try {
     const response = await fetch(streamUrl, {
@@ -53,6 +102,43 @@ async function sendChatMessage() {
   }
 }
 
+function updateAgentStatus(agent, subtitle, percent) {
+  if (agent === "flight") {
+    const card = document.querySelector(".flight-agent-bg");
+    if (card) {
+      const parent = card.closest(".agent-status-card");
+      if (parent) {
+        const sub = parent.querySelector(".agent-info-subtitle");
+        const fill = parent.querySelector(".agent-progress-fill");
+        if (sub) sub.innerText = subtitle;
+        if (fill) fill.style.width = percent;
+      }
+    }
+  } else if (agent === "hotel") {
+    const card = document.querySelector(".hotel-agent-bg");
+    if (card) {
+      const parent = card.closest(".agent-status-card");
+      if (parent) {
+        const sub = parent.querySelector(".agent-info-subtitle");
+        const fill = parent.querySelector(".agent-progress-fill");
+        if (sub) sub.innerText = subtitle;
+        if (fill) fill.style.width = percent;
+      }
+    }
+  } else if (agent === "itinerary") {
+    const card = document.querySelector(".itinerary-agent-bg");
+    if (card) {
+      const parent = card.closest(".agent-status-card");
+      if (parent) {
+        const sub = parent.querySelector(".agent-info-subtitle");
+        const fill = parent.querySelector(".agent-progress-fill");
+        if (sub) sub.innerText = subtitle;
+        if (fill) fill.style.width = percent;
+      }
+    }
+  }
+}
+
 function handleSSEEvent(type, data, messageDiv) {
   if (type === "status") {
     messageDiv.innerText = `⏳ ${data.message}`;
@@ -66,20 +152,26 @@ function handleSSEEvent(type, data, messageDiv) {
 
     if (node === "flight_agent" && update.flight_options) {
       currentOptions.flights = update.flight_options;
+      updateAgentStatus("flight", "Flights discovered & ranked", "100%");
       renderOptionsGrid();
     } else if (node === "hotel_agent" && update.hotel_options) {
       currentOptions.hotels = update.hotel_options;
+      updateAgentStatus("hotel", "Hotels selected within budget", "100%");
       renderOptionsGrid();
     } else if (node === "itinerary_agent" && update.activity_options) {
       currentOptions.activities = update.activity_options;
+      updateAgentStatus("itinerary", "Day-wise activities scheduled", "95%");
       renderOptionsGrid();
     }
   } else if (type === "synthesis") {
     messageDiv.innerHTML = formatMarkdown(data.draft);
+    updateAgentStatus("itinerary", "Itinerary completed", "100%");
   } else if (type === "interrupt") {
     showHitlPanel();
   } else if (type === "done") {
-    console.log("Stream completed.");
+    if (activeTripId && typeof loadTripIntake === "function") {
+      loadTripIntake(activeTripId);
+    }
   }
 }
 
@@ -118,7 +210,7 @@ function renderOptionsGrid() {
     html += `
       <div class="option-card">
         <div>
-          <span class="option-badge" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7;">🏨 Hotel Option</span>
+          <span class="option-badge" style="background: rgba(16, 185, 129, 0.1); color: #059669;">🏨 Hotel Option</span>
           <div class="option-title">${escapeHtml(h.name)}</div>
           <div class="option-price">₹${formattedTotal} total</div>
           <div class="option-meta">
@@ -185,30 +277,55 @@ function showHitlPanel() {
 
 function appendUserMessage(text) {
   const container = document.getElementById("chat-messages");
-  const msg = document.createElement("div");
-  msg.className = "message-card message-user";
-  msg.innerText = text;
-  container.appendChild(msg);
+  const userWrap = document.createElement("div");
+  userWrap.className = "message-user-wrap";
+
+  const name = localStorage.getItem("planmytrip_name") || "T";
+  const initial = name.charAt(0).toUpperCase();
+
+  userWrap.innerHTML = `
+    <div class="message-bubble message-user-bubble">
+      ${escapeHtml(text)}
+      <div class="message-time">${formatCurrentTime()}</div>
+    </div>
+    <div class="chat-user-avatar">${initial}</div>
+  `;
+
+  container.appendChild(userWrap);
   scrollChatToBottom();
 }
 
 function appendAgentMessage(text) {
   const container = document.getElementById("chat-messages");
-  const msg = document.createElement("div");
-  msg.className = "message-card message-agent markdown-body";
-  msg.innerHTML = formatMarkdown(text);
-  container.appendChild(msg);
+  const agentWrap = document.createElement("div");
+  agentWrap.className = "message-agent-wrap";
+
+  agentWrap.innerHTML = `
+    <div class="chat-agent-avatar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="#38bdf8"/>
+        <circle cx="12" cy="12" r="2.5" fill="#ffffff"/>
+      </svg>
+    </div>
+    <div class="message-bubble message-agent-bubble markdown-body">
+      ${formatMarkdown(text)}
+    </div>
+  `;
+
+  container.appendChild(agentWrap);
   scrollChatToBottom();
-  return msg;
+  return agentWrap.querySelector(".message-agent-bubble");
 }
 
 function scrollChatToBottom() {
-  const container = document.getElementById("chat-messages");
-  container.scrollTop = container.scrollHeight;
+  const scrollArea = document.getElementById("main-scroll-area");
+  if (scrollArea) {
+    scrollArea.scrollTo({ top: scrollArea.scrollHeight, behavior: "smooth" });
+  }
 }
 
 function formatMarkdown(text) {
-  return text
+  return String(text || "")
     .replace(/^### (.*$)/gim, "<h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h2>$1</h2>")
     .replace(/^# (.*$)/gim, "<h1>$1</h1>")

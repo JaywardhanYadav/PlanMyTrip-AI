@@ -5,7 +5,21 @@ from ..mcp_client.registry import MCPRegistry
 
 
 async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    destination = "Goa"
+    destination = state.get("destination") or "Goa"
+    nights = 3
+    start_str = state.get("start_date")
+    end_str = state.get("end_date")
+    if start_str and end_str:
+        try:
+            from datetime import date
+            d1 = date.fromisoformat(str(start_str))
+            d2 = date.fromisoformat(str(end_str))
+            diff = (d2 - d1).days
+            if diff > 0:
+                nights = diff
+        except Exception:
+            nights = 3
+
     messages = state.get("messages", [])
     if messages:
         last_msg = str(messages[-1].content).lower()
@@ -28,7 +42,7 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
     try:
         raw_result = await registry.places_client.call_tool(
             name="search_hotels",
-            arguments={"destination": destination, "nights": 3},
+            arguments={"destination": destination, "nights": nights},
         )
         hotels_raw = raw_result.get("hotels", [])
     except Exception:

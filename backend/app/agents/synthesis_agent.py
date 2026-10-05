@@ -42,8 +42,16 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
     client = get_openai_client()
     settings = get_settings()
 
+    dep_station = state.get("departure_station") or "New Delhi"
+    dest = state.get("destination") or "Goa"
+    start_d = state.get("start_date") or "2026-12-01"
+    end_d = state.get("end_date") or "2026-12-05"
+
     prompt = (
         f"You are the Synthesis Agent for PlanMyTrip AI. Synthesize the finalized trip plan.\n"
+        f"- Departure Station / City: {dep_station}\n"
+        f"- Destination: {dest}\n"
+        f"- Travel Dates: {start_d} to {end_d}\n"
         f"- Flights: {flight_desc}\n"
         f"- Hotel: {hotel_desc}\n"
         f"- Activities: {activities_desc}\n"

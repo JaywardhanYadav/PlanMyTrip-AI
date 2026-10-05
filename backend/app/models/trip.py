@@ -9,6 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import TimestampMixin, UUIDBase
 
 if TYPE_CHECKING:
+    from .chat_message import ChatMessage
+    from .conversation_intake import ConversationIntake
     from .trip_thread import TripThread
     from .user import User
 
@@ -25,6 +27,11 @@ class Trip(UUIDBase, TimestampMixin):
     title: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
+    )
+    departure_station: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="Delhi (DEL)",
     )
     destination: Mapped[str] = mapped_column(
         String(255),
@@ -66,3 +73,16 @@ class Trip(UUIDBase, TimestampMixin):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    messages: Mapped[list["ChatMessage"]] = relationship(
+        "ChatMessage",
+        back_populates="trip",
+        cascade="all, delete-orphan",
+        order_by="ChatMessage.created_at",
+    )
+    intake: Mapped["ConversationIntake | None"] = relationship(
+        "ConversationIntake",
+        back_populates="trip",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+

@@ -7,6 +7,7 @@ from ..core.money import parse_indian_budget_decimal
 
 class TripCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
+    departure_station: str = Field(default="Delhi (DEL)", min_length=1, max_length=255)
     destination: str = Field(min_length=1, max_length=255)
     start_date: date | None = None
     end_date: date | None = None
@@ -21,11 +22,11 @@ class TripCreate(BaseModel):
         return Decimal("200000.00")
 
 
-
 class TripResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     title: str
+    departure_station: str
     destination: str
     start_date: date | None
     end_date: date | None
@@ -34,3 +35,42 @@ class TripResponse(BaseModel):
     status: str
     created_at: datetime
     thread_id: str | None = None
+
+
+class ChatMessageResponse(BaseModel):
+    id: uuid.UUID
+    trip_id: uuid.UUID
+    role: str
+    content: str
+    created_at: datetime
+
+
+class ConversationIntakeResponse(BaseModel):
+    id: uuid.UUID
+    trip_id: uuid.UUID
+    departure_station: str
+    destination: str
+    start_date: date | None
+    end_date: date | None
+    budget_amount: Decimal
+    currency: str
+    created_at: datetime
+
+
+class ConversationIntakeUpdate(BaseModel):
+    departure_station: str | None = None
+    destination: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    budget_amount: Decimal | None = None
+    currency: str = "INR"
+
+    @field_validator("budget_amount", mode="before")
+    @classmethod
+    def parse_budget_update(cls, value: object) -> Decimal | None:
+        if value is None:
+            return None
+        if isinstance(value, (str, int, float, Decimal)):
+            return parse_indian_budget_decimal(value)
+        return Decimal("200000.00")
+

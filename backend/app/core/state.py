@@ -349,7 +349,13 @@ class PlanMyTripState(TypedDict, total=False):
     selected_hotel_id: str | None
     selected_activity_ids: list[str]
 
+    departure_station: str | None
+    destination: str | None
+    start_date: str | None
+    end_date: str | None
+
     itinerary_draft: str | None
     human_feedback: dict[str, object] | None
     next_step: str | None
+
 
