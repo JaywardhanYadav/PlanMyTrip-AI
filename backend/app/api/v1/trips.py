@@ -261,3 +261,27 @@ async def update_conversation_intake(
         created_at=intake.created_at,
     )
 
+
+@router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_trip(
+    trip_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    stmt = (
+        select(Trip)
+        .where(Trip.id == trip_id, Trip.user_id == user.id)
+        .options(
+            selectinload(Trip.thread),
+            selectinload(Trip.messages),
+            selectinload(Trip.intake),
+        )
+    )
+    result = await session.execute(stmt)
+    trip = result.scalar_one_or_none()
+    if not trip:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+
+    await session.delete(trip)
+    await session.commit()
+

@@ -16,6 +16,9 @@ async function sendChatMessage() {
   const message = input.value.trim();
   if (!message) return;
 
+  const welcomeHero = document.getElementById("chat-welcome-hero");
+  if (welcomeHero) welcomeHero.style.display = "none";
+
   input.value = "";
   appendUserMessage(message);
 
@@ -29,6 +32,25 @@ async function sendChatMessage() {
   let threadIdToUse = activeThreadId;
   if (!threadIdToUse) {
     try {
+      let inferredDest = "Travel Destination";
+      const lower = message.toLowerCase();
+      if (lower.includes("goa")) inferredDest = "Goa";
+      else if (lower.includes("japan") || lower.includes("tokyo")) inferredDest = "Japan";
+      else if (lower.includes("kerala")) inferredDest = "Kerala";
+      else if (lower.includes("shimla") || lower.includes("simila") || lower.includes("manali")) inferredDest = "Shimla";
+      else if (lower.includes("philippines")) inferredDest = "Philippines";
+      else if (lower.includes("bali")) inferredDest = "Bali";
+      else if (lower.includes("edinburgh") || lower.includes("scotland")) inferredDest = "Edinburgh";
+      else if (lower.includes("france") || lower.includes("paris")) inferredDest = "France";
+      else {
+        const destMatch = message.match(/(?:to|visit|in|explore)\s+([A-Za-z]+)/i);
+        if (destMatch && destMatch[1]) {
+          inferredDest = destMatch[1].charAt(0).toUpperCase() + destMatch[1].slice(1);
+        }
+      }
+
+      const tripTitle = inferredDest !== "Travel Destination" ? `Trip to ${inferredDest}` : (message.substring(0, 24) + (message.length > 24 ? "..." : ""));
+
       const initRes = await fetch(`${API_BASE}/trips`, {
         method: "POST",
         headers: {
@@ -36,8 +58,8 @@ async function sendChatMessage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          title: message.substring(0, 30) + (message.length > 30 ? "..." : ""),
-          destination: message.includes("Japan") ? "Japan" : (message.includes("Kerala") ? "Kerala" : (message.includes("Shimla") || message.includes("Simila") ? "Shimla" : (message.includes("Philippines") ? "Philippines" : (message.includes("Goa") ? "Goa" : "Travel Destination")))),
+          title: tripTitle,
+          destination: inferredDest,
           departure_station: "Delhi (DEL)",
           budget_total: "2 lakhs",
           currency: "INR"
@@ -163,6 +185,10 @@ function handleSSEEvent(type, data, messageDiv) {
       updateAgentStatus("itinerary", "Day-wise activities scheduled", "95%");
       renderOptionsGrid();
     }
+  } else if (type === "intake_update") {
+    if (data && data.destination && typeof loadTrips === "function") {
+      loadTrips();
+    }
   } else if (type === "synthesis") {
     messageDiv.innerHTML = formatMarkdown(data.draft);
     updateAgentStatus("itinerary", "Itinerary completed", "100%");
@@ -171,6 +197,9 @@ function handleSSEEvent(type, data, messageDiv) {
   } else if (type === "done") {
     if (activeTripId && typeof loadTripIntake === "function") {
       loadTripIntake(activeTripId);
+    }
+    if (typeof loadTrips === "function") {
+      loadTrips();
     }
   }
 }
@@ -276,6 +305,9 @@ function showHitlPanel() {
 }
 
 function appendUserMessage(text) {
+  if (typeof setConversationMode === "function") {
+    setConversationMode(true, "PlanMyTrip AI — Active Conversation");
+  }
   const container = document.getElementById("chat-messages");
   const userWrap = document.createElement("div");
   userWrap.className = "message-user-wrap";
@@ -296,6 +328,9 @@ function appendUserMessage(text) {
 }
 
 function appendAgentMessage(text) {
+  if (typeof setConversationMode === "function") {
+    setConversationMode(true, "PlanMyTrip AI — Active Conversation");
+  }
   const container = document.getElementById("chat-messages");
   const agentWrap = document.createElement("div");
   agentWrap.className = "message-agent-wrap";
@@ -334,8 +369,17 @@ function formatMarkdown(text) {
     .replace(/\n/gim, "<br>");
 }
 
-document.getElementById("chat-send-btn").addEventListener("click", sendChatMessage);
-document.getElementById("chat-input").addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendChatMessage();
-});
-document.getElementById("hitl-approve-btn").addEventListener("click", approvePlan);
+const sendBtn = document.getElementById("chat-send-btn");
+if (sendBtn) {
+  sendBtn.addEventListener("click", sendChatMessage);
+}
+const chatInput = document.getElementById("chat-input");
+if (chatInput) {
+  chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendChatMessage();
+  });
+}
+const hitlApprove = document.getElementById("hitl-approve-btn");
+if (hitlApprove) {
+  hitlApprove.addEventListener("click", approvePlan);
+}

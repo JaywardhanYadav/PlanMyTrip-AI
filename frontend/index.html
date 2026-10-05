@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261004_v6">
+  <link rel="stylesheet" href="style.css?v=20261005_v14">
 </head>
 <body>
   <div class="app-layout">
@@ -32,33 +32,26 @@
       </div>
 
       <nav class="sidebar-nav">
-        <a href="#" class="nav-item active" id="nav-home">
+        <a href="index.html" class="nav-item active" id="nav-home">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
           <span>Home</span>
         </a>
-        <a href="#" class="nav-item" id="nav-trips">
+        <a href="main.html" class="nav-item" id="nav-trips">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
           </svg>
           <span>My Trips</span>
         </a>
-        <a href="#" class="nav-item" id="nav-explore">
+        <a href="index.html" class="nav-item" id="nav-explore">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
           </svg>
           <span>Explore</span>
-        </a>
-        <a href="#" class="nav-item" id="nav-guides">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-          </svg>
-          <span>Travel Guides</span>
         </a>
       </nav>
 
@@ -86,244 +79,118 @@
 
     <main class="main-content">
       <div class="main-scroll-area" id="main-scroll-area">
-        <section class="hero-showcase">
+        <section class="hero-showcase" id="hero-showcase">
           <div class="hero-showcase-bg"></div>
           <div class="hero-showcase-content">
-            <div class="hero-ai-badge">
-              <span class="sparkle-icon">✨</span> AI Powered Travel Planning
+            <div class="hero-top-block">
+              <div class="hero-ai-badge">
+                <span class="badge-sparkle">✨</span>
+                <span>Autonomous Travel Intelligence</span>
+              </div>
+              <h1 class="hero-headline">
+                Craft Your Perfect Itinerary in <span class="hero-headline-accent">Minutes</span>
+              </h1>
+              <p class="hero-subheadline">
+                Powered by autonomous AI agents for real-time flights, hand-picked stays, and personalized day-by-day experiences.
+              </p>
+              <div class="hero-action-row">
+                <button type="button" class="btn-hero-plan" id="btn-hero-plan">
+                  <span class="btn-hero-icon-badge">
+                    <span class="btn-cta-icon">✈️</span>
+                  </span>
+                  <span class="btn-hero-label-wrap">
+                    <span class="btn-hero-label">Plan Your Trip</span>
+                    <span class="btn-hero-sublabel">Instant AI Itinerary</span>
+                  </span>
+                  <span class="btn-hero-arrow-badge">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </span>
+                </button>
+              </div>
+              <div class="hero-perks-row">
+                <div class="hero-perk-pill">
+                  <span class="perk-pill-dot"></span>
+                  <span>Best Flight Fares in INR (₹)</span>
+                </div>
+                <div class="hero-perk-pill">
+                  <span class="perk-pill-dot"></span>
+                  <span>Verified Hand-Picked Hotels</span>
+                </div>
+                <div class="hero-perk-pill">
+                  <span class="perk-pill-dot"></span>
+                  <span>Custom Day-Wise Schedules</span>
+                </div>
+              </div>
             </div>
-            <h1 class="hero-headline">
-              Discover Amazing Places<br>with <span class="hero-headline-accent">PlanMyTrip AI</span>
-            </h1>
-            <p class="hero-subheadline">
-              Your personal AI travel agent to plan flights, hotels, itineraries and more — all in one place.
-            </p>
-            <div class="hero-cards-deck">
-              <div class="hero-cards-track" id="hero-cards-track">
-                <div class="dest-card">
-                  <img src="assets/Japan.jpg?v=20261004" alt="Japan" class="dest-card-bg" loading="eager" decoding="async">
-                  <div class="dest-card-overlay">
-                    <div class="dest-card-title">Japan</div>
-                    <div class="dest-card-subtitle">Culture &amp; Mt Fuji</div>
+
+            <div class="hero-bottom-block">
+              <div class="hero-deck-header">
+                <span class="deck-header-dot"></span>
+                <span>Explore Popular Destinations</span>
+              </div>
+              <div class="hero-cards-deck">
+                <div class="hero-cards-track" id="hero-cards-track">
+                  <div class="dest-card">
+                    <img src="assets/Japan.jpg?v=20261004" alt="Japan" class="dest-card-bg" loading="eager" decoding="async">
+                    <div class="dest-card-overlay">
+                      <div class="dest-card-title">Japan</div>
+                      <div class="dest-card-subtitle">Culture &amp; Mt Fuji</div>
+                    </div>
                   </div>
-                </div>
-                <div class="dest-card">
-                  <img src="assets/kerala.jpg?v=20261004" alt="Kerala" class="dest-card-bg" loading="eager" decoding="async">
-                  <div class="dest-card-overlay">
-                    <div class="dest-card-title">Kerala</div>
-                    <div class="dest-card-subtitle">Heritage &amp; Festivals</div>
+                  <div class="dest-card">
+                    <img src="assets/kerala.jpg?v=20261004" alt="Kerala" class="dest-card-bg" loading="eager" decoding="async">
+                    <div class="dest-card-overlay">
+                      <div class="dest-card-title">Kerala</div>
+                      <div class="dest-card-subtitle">Heritage &amp; Festivals</div>
+                    </div>
                   </div>
-                </div>
-                <div class="dest-card">
-                  <img src="assets/Simila.jpg?v=20261004" alt="Shimla" class="dest-card-bg" loading="eager" decoding="async">
-                  <div class="dest-card-overlay">
-                    <div class="dest-card-title">Shimla</div>
-                    <div class="dest-card-subtitle">Hills &amp; Heritage</div>
+                  <div class="dest-card">
+                    <img src="assets/Simila.jpg?v=20261004" alt="Shimla" class="dest-card-bg" loading="eager" decoding="async">
+                    <div class="dest-card-overlay">
+                      <div class="dest-card-title">Shimla</div>
+                      <div class="dest-card-subtitle">Hills &amp; Heritage</div>
+                    </div>
                   </div>
-                </div>
-                <div class="dest-card">
-                  <img src="assets/Philippines.jpg?v=20261004" alt="Philippines" class="dest-card-bg" loading="eager" decoding="async">
-                  <div class="dest-card-overlay">
-                    <div class="dest-card-title">Philippines</div>
-                    <div class="dest-card-subtitle">Islands &amp; Beaches</div>
+                  <div class="dest-card">
+                    <img src="assets/Philippines.jpg?v=20261004" alt="Philippines" class="dest-card-bg" loading="eager" decoding="async">
+                    <div class="dest-card-overlay">
+                      <div class="dest-card-title">Philippines</div>
+                      <div class="dest-card-subtitle">Islands &amp; Beaches</div>
+                    </div>
                   </div>
-                </div>
-                <div class="dest-card">
-                  <img src="assets/Edinburgh.jpg?v=20261004" alt="Edinburgh" class="dest-card-bg" loading="eager" decoding="async">
-                  <div class="dest-card-overlay">
-                    <div class="dest-card-title">Edinburgh</div>
-                    <div class="dest-card-subtitle">Castles &amp; Old Town</div>
+                  <div class="dest-card">
+                    <img src="assets/Edinburgh.jpg?v=20261004" alt="Edinburgh" class="dest-card-bg" loading="eager" decoding="async">
+                    <div class="dest-card-overlay">
+                      <div class="dest-card-title">Edinburgh</div>
+                      <div class="dest-card-subtitle">Castles &amp; Old Town</div>
+                    </div>
                   </div>
-                </div>
-                <div class="dest-card">
-                  <img src="assets/Bali.jpg?v=20261004" alt="Bali" class="dest-card-bg" loading="eager" decoding="async">
-                  <div class="dest-card-overlay">
-                    <div class="dest-card-title">Bali</div>
-                    <div class="dest-card-subtitle">Culture &amp; Adventure</div>
+                  <div class="dest-card">
+                    <img src="assets/Bali.jpg?v=20261004" alt="Bali" class="dest-card-bg" loading="eager" decoding="async">
+                    <div class="dest-card-overlay">
+                      <div class="dest-card-title">Bali</div>
+                      <div class="dest-card-subtitle">Culture &amp; Adventure</div>
+                    </div>
                   </div>
-                </div>
-                <div class="dest-card">
-                  <img src="assets/France.jpg?v=20261004" alt="France" class="dest-card-bg" loading="eager" decoding="async">
-                  <div class="dest-card-overlay">
-                    <div class="dest-card-title">France</div>
-                    <div class="dest-card-subtitle">Romance &amp; Art</div>
+                  <div class="dest-card">
+                    <img src="assets/France.jpg?v=20261004" alt="France" class="dest-card-bg" loading="eager" decoding="async">
+                    <div class="dest-card-overlay">
+                      <div class="dest-card-title">France</div>
+                      <div class="dest-card-subtitle">Romance &amp; Art</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
-
-        <div id="chat-messages" class="chat-container">
-          <div class="message-user-wrap">
-            <div class="message-bubble message-user-bubble">
-              Plan a 5 day trip to Goa for 2 people in December. I want beach, good hotels and sightseeing.
-              <div class="message-time">10:24 AM</div>
-            </div>
-            <div class="chat-user-avatar">
-              <span id="chat-user-initial">J</span>
-            </div>
-          </div>
-
-          <div class="message-agent-wrap">
-            <div class="chat-agent-avatar">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="#38bdf8"/>
-                <circle cx="12" cy="12" r="2.5" fill="#ffffff"/>
-              </svg>
-            </div>
-            <div class="message-bubble message-agent-bubble">
-              <div class="agent-lead-text">
-                Great! I'll plan a 5-day trip for 2 people. Let me search for the best flights, hotels, weather and create a complete itinerary for you.
-              </div>
-              <div class="agent-checklist-box">
-                <div class="checklist-item done">
-                  <div class="check-icon-circle check-done">✔</div>
-                  <span>Analyzing your request</span>
-                </div>
-                <div class="checklist-item done">
-                  <div class="check-icon-circle check-done">✔</div>
-                  <span>Searching flights</span>
-                </div>
-                <div class="checklist-item active">
-                  <div class="check-icon-circle check-active"></div>
-                  <span>Finding hotels</span>
-                </div>
-                <div class="checklist-item pending">
-                  <div class="check-icon-circle check-pending"></div>
-                  <span>Checking weather &amp; best places</span>
-                </div>
-                <div class="checklist-item pending">
-                  <div class="check-icon-circle check-pending"></div>
-                  <span>Creating day-wise itinerary</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="hitl-panel" class="hitl-panel" style="display: none;">
-          <div class="hitl-info">
-            <h4>Human-in-the-Loop Review Required</h4>
-            <p>Review the generated flight, hotel, and activity options above. Click a card to switch choices, or approve the proposal to synthesize the final plan.</p>
-          </div>
-          <div class="hitl-actions">
-            <button id="hitl-approve-btn" class="btn-success">Approve Plan</button>
-          </div>
-        </div>
-
-
-      </div>
-
-      <div class="bottom-input-container">
-        <div class="capsule-input-box">
-          <button type="button" class="btn-capsule-attach" title="Attach file or reference">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-            </svg>
-          </button>
-          <input type="text" id="chat-input" class="capsule-text-input" placeholder="Ask me to plan a trip, compare destinations, or find best flights..." autocomplete="off">
-          <button type="button" id="chat-send-btn" class="btn-capsule-send" title="Send message">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-          </button>
-        </div>
-
-        <div class="prompt-pills-row">
-          <button type="button" class="prompt-pill" onclick="applyQuickPrompt('Best time to visit Japan?')">Best time to visit Japan?</button>
-          <button type="button" class="prompt-pill" onclick="applyQuickPrompt('Plan budget trip to Shimla')">Plan budget trip to Shimla</button>
-          <button type="button" class="prompt-pill" onclick="applyQuickPrompt('Explore Kerala heritage and backwaters')">Explore Kerala heritage &amp; backwaters</button>
-          <button type="button" class="prompt-pill" onclick="applyQuickPrompt('Island hopping in Philippines')">Island hopping in Philippines</button>
-        </div>
       </div>
     </main>
   </div>
 
-  <div id="new-trip-modal" class="modal-backdrop" style="display: none;">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Create New Trip</h3>
-        <button class="modal-close-btn" id="close-new-trip-modal">&times;</button>
-      </div>
-      <form id="new-trip-form">
-        <div class="form-group">
-          <label for="new-trip-title">Trip Title</label>
-          <input type="text" id="new-trip-title" class="form-input" placeholder="e.g. Goa Beach Vacation" required>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="new-trip-departure">1. Departing Station / City</label>
-            <input type="text" id="new-trip-departure" class="form-input" placeholder="e.g. Delhi (DEL)" value="Delhi (DEL)" required>
-          </div>
-          <div class="form-group">
-            <label for="new-trip-destination">2. Destination</label>
-            <input type="text" id="new-trip-destination" class="form-input" placeholder="e.g. Goa, Mumbai, Tokyo" required>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="new-trip-start-date">3. Start Date</label>
-            <input type="date" id="new-trip-start-date" class="form-input" required>
-          </div>
-          <div class="form-group">
-            <label for="new-trip-end-date">4. End Date</label>
-            <input type="date" id="new-trip-end-date" class="form-input" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="new-trip-budget">5. Budget (in INR / ₹)</label>
-          <input type="text" id="new-trip-budget" class="form-input" placeholder="e.g. 2 lakhs, 5 lakhs, 1.5L, 50000" value="2 lakhs" required>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="cancel-new-trip-btn">Cancel</button>
-          <button type="submit" class="btn-primary" style="width: auto;">Create Trip</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="edit-intake-modal" class="modal-backdrop" style="display: none;">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Edit Trip Parameters</h3>
-        <button class="modal-close-btn" id="close-edit-intake-modal">&times;</button>
-      </div>
-      <form id="edit-intake-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="edit-intake-departure">Departing Station / City</label>
-            <input type="text" id="edit-intake-departure" class="form-input" required>
-          </div>
-          <div class="form-group">
-            <label for="edit-intake-destination">Destination</label>
-            <input type="text" id="edit-intake-destination" class="form-input" required>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="edit-intake-start-date">Start Date</label>
-            <input type="date" id="edit-intake-start-date" class="form-input">
-          </div>
-          <div class="form-group">
-            <label for="edit-intake-end-date">End Date</label>
-            <input type="date" id="edit-intake-end-date" class="form-input">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="edit-intake-budget">Budget (in INR / ₹)</label>
-          <input type="text" id="edit-intake-budget" class="form-input" required>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="cancel-edit-intake-btn">Cancel</button>
-          <button type="submit" class="btn-primary" style="width: auto;">Save Changes</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <script src="trips.js"></script>
-  <script src="app.js"></script>
+  <script src="trips.js?v=20261005_v15"></script>
 </body>
 </html>

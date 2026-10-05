@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing_extensions import TypedDict
 
 from .money import BudgetReconciliation, Money
+from ..schemas.intake import IntakeSupervisorEvaluation
 
 
 class HasOptionId(Protocol):
@@ -357,5 +358,6 @@ class PlanMyTripState(TypedDict, total=False):
     itinerary_draft: str | None
     human_feedback: dict[str, object] | None
     next_step: str | None
+    intake_evaluation: IntakeSupervisorEvaluation | None
 
 

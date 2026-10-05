@@ -22,14 +22,51 @@ function renderMarkdownText(text) {
     .replace(/\n/gim, "<br>");
 }
 
-function getDestinationThumbnail(destination) {
+const FOLDER_PHOTOS = [
+  "assets/Goa.jpg",
+  "assets/Japan.jpg",
+  "assets/kerala.jpg",
+  "assets/Simila.jpg",
+  "assets/Bali.jpg",
+  "assets/Edinburgh.jpg",
+  "assets/France.jpg",
+  "assets/Philippines.jpg",
+  "assets/img-1.png",
+  "assets/img-2.png",
+  "assets/img-3.jpg",
+  "assets/img-4.jpg",
+  "assets/img-5.jpg",
+  "assets/img-6.jpg",
+  "assets/img-7.jpg",
+  "assets/img-8.jpg",
+  "assets/img-9.jpg"
+];
+
+function getRandomFolderPhoto(seed) {
+  if (seed && typeof seed === "string") {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash << 5) - hash + seed.charCodeAt(i);
+      hash |= 0;
+    }
+    const index = Math.abs(hash) % FOLDER_PHOTOS.length;
+    return FOLDER_PHOTOS[index];
+  }
+  const randomIndex = Math.floor(Math.random() * FOLDER_PHOTOS.length);
+  return FOLDER_PHOTOS[randomIndex];
+}
+
+function getDestinationThumbnail(destination, seed) {
   const d = (destination || "").toLowerCase();
-  if (d.includes("japan")) return "assets/Japan.jpg?v=20261004";
-  if (d.includes("kerala")) return "assets/kerala.jpg?v=20261004";
-  if (d.includes("shimla") || d.includes("simila")) return "assets/Simila.jpg?v=20261004";
-  if (d.includes("philippines")) return "assets/Philippines.jpg?v=20261004";
-  if (d.includes("goa")) return "assets/Goa.jpg?v=20261004";
-  return "assets/Goa.jpg?v=20261004";
+  if (d.includes("japan") || d.includes("tokyo")) return "assets/Japan.jpg";
+  if (d.includes("kerala")) return "assets/kerala.jpg";
+  if (d.includes("shimla") || d.includes("simila") || d.includes("manali")) return "assets/Simila.jpg";
+  if (d.includes("philippines")) return "assets/Philippines.jpg";
+  if (d.includes("goa")) return "assets/Goa.jpg";
+  if (d.includes("bali")) return "assets/Bali.jpg";
+  if (d.includes("edinburgh") || d.includes("scotland")) return "assets/Edinburgh.jpg";
+  if (d.includes("france") || d.includes("paris")) return "assets/France.jpg";
+  return getRandomFolderPhoto(seed || destination);
 }
 
 function getSampleDateRange(dest) {
@@ -78,11 +115,17 @@ function applyQuickPrompt(promptText) {
   const input = document.getElementById("chat-input");
   if (!input) return;
   input.value = promptText;
+  const welcome = document.getElementById("chat-welcome-hero");
+  if (welcome) welcome.style.display = "none";
   const scrollArea = document.getElementById("main-scroll-area");
   if (scrollArea) {
     scrollArea.scrollTo({ top: scrollArea.scrollHeight, behavior: "smooth" });
   }
-  input.focus();
+  if (typeof sendChatMessage === "function") {
+    sendChatMessage();
+  } else {
+    input.focus();
+  }
 }
 
 async function loadTrips() {
@@ -137,7 +180,7 @@ async function loadTrips() {
       item.id = `trip-item-${trip.id}`;
       item.onclick = () => selectTrip(trip);
 
-      const thumbUrl = getDestinationThumbnail(trip.destination);
+      const thumbUrl = getDestinationThumbnail(trip.destination, trip.id);
       let dateMeta = "";
       if (trip.start_date && trip.end_date) {
         dateMeta = `${trip.start_date} – ${trip.end_date}`;
@@ -145,25 +188,79 @@ async function loadTrips() {
         dateMeta = getSampleDateRange(trip.destination);
       }
 
+      let tripTitle = trip.title;
+      if (trip.destination && trip.destination !== "Travel Destination") {
+        if (!tripTitle || tripTitle === "New Trip" || tripTitle.startsWith("Plan a trip") || tripTitle.includes("...") || tripTitle.length > 25) {
+          tripTitle = `Trip to ${trip.destination}`;
+        }
+      } else if (!tripTitle || tripTitle === "New Trip") {
+        tripTitle = "Trip Plan";
+      }
+
       item.innerHTML = `
-        <img src="${thumbUrl}" alt="${escapeHtml(trip.destination)}" class="trip-thumb-img">
+        <div class="trip-thumb-wrapper">
+          <img src="${thumbUrl}" alt="${escapeHtml(trip.destination || 'Trip')}" class="trip-thumb-img">
+        </div>
         <div class="trip-details-block">
-          <div class="trip-item-title">${escapeHtml(trip.title)}</div>
+          <div class="trip-item-title">${escapeHtml(tripTitle)}</div>
           <div class="trip-item-meta">${dateMeta}</div>
         </div>
+        <button type="button" class="btn-trip-delete" title="Delete trip" aria-label="Delete trip" onclick="event.stopPropagation(); deleteTrip('${trip.id}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+        </button>
       `;
       container.appendChild(item);
     });
 
-    if (!activeTripId && trips.length > 0) {
-      selectTrip(trips[0]);
-    }
   } catch (err) {
     console.error("Failed to load trips", err);
   }
 }
 
+async function deleteTrip(tripId) {
+  if (!confirm("Are you sure you want to delete this trip?")) {
+    return;
+  }
+
+  const token = localStorage.getItem("planmytrip_token");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/trips/${tripId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.ok || res.status === 204) {
+      if (activeTripId === tripId) {
+        if (typeof resetNewChat === "function") {
+          resetNewChat();
+        }
+      }
+      await loadTrips();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.detail || "Failed to delete trip");
+    }
+  } catch (err) {
+    console.error("Failed to delete trip", err);
+    alert("Error deleting trip");
+  }
+}
+
 async function selectTrip(trip) {
+  if (document.getElementById("hero-showcase")) {
+    window.location.href = `main.html?trip_id=${encodeURIComponent(trip.id)}`;
+    return;
+  }
+
   activeTripId = trip.id;
   activeThreadId = trip.thread_id;
 
@@ -175,8 +272,13 @@ async function selectTrip(trip) {
     activeEl.classList.add("active");
   }
 
+  const welcome = document.getElementById("chat-welcome-hero");
+  if (welcome) welcome.style.display = "none";
+
   const hitlPanel = document.getElementById("hitl-panel");
   if (hitlPanel) hitlPanel.style.display = "none";
+
+  window.history.pushState({}, "", `main.html?trip_id=${encodeURIComponent(trip.id)}`);
 
   await loadTripIntake(trip.id);
   await loadTripMessages(trip.id, trip.destination);
@@ -209,6 +311,7 @@ async function loadTripMessages(tripId, destination) {
     if (res.ok) {
       const messages = await res.json();
       if (Array.isArray(messages) && messages.length > 0) {
+        setConversationMode(true, destination ? `Trip to ${destination}` : "");
         chatMessages.innerHTML = "";
         const name = localStorage.getItem("planmytrip_name") || "T";
         const initial = name.charAt(0).toUpperCase();
@@ -243,6 +346,8 @@ async function loadTripMessages(tripId, destination) {
           }
         });
         scrollChatToBottom();
+      } else {
+        setConversationMode(false);
       }
     }
   } catch (err) {
@@ -376,16 +481,56 @@ function logout() {
   window.location.href = "login.html";
 }
 
-document.getElementById("new-trip-btn").addEventListener("click", openNewTripModal);
-document.getElementById("close-new-trip-modal").addEventListener("click", closeNewTripModal);
-document.getElementById("cancel-new-trip-btn").addEventListener("click", closeNewTripModal);
-document.getElementById("new-trip-form").addEventListener("submit", handleNewTripSubmit);
+function resetNewChat() {
+  activeTripId = null;
+  activeThreadId = null;
+  currentIntakeData = null;
+  document.querySelectorAll(".trip-item").forEach((el) => el.classList.remove("active"));
+  const chatContainer = document.getElementById("chat-messages");
+  if (chatContainer) chatContainer.innerHTML = "";
+  const welcome = document.getElementById("chat-welcome-hero");
+  if (welcome) welcome.style.display = "flex";
+  const hitl = document.getElementById("hitl-panel");
+  if (hitl) hitl.style.display = "none";
+  window.history.pushState({}, "", "main.html");
+  const input = document.getElementById("chat-input");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+}
 
-document.getElementById("close-edit-intake-modal").addEventListener("click", closeEditIntakeModal);
-document.getElementById("cancel-edit-intake-btn").addEventListener("click", closeEditIntakeModal);
-document.getElementById("edit-intake-form").addEventListener("submit", handleEditIntakeSubmit);
+const newTripBtn = document.getElementById("new-trip-btn");
+if (newTripBtn) {
+  newTripBtn.addEventListener("click", () => {
+    if (document.getElementById("hero-showcase")) {
+      window.location.href = "main.html";
+    } else {
+      resetNewChat();
+    }
+  });
+}
 
-document.getElementById("logout-btn").addEventListener("click", logout);
+const closeNewModal = document.getElementById("close-new-trip-modal");
+if (closeNewModal) closeNewModal.addEventListener("click", closeNewTripModal);
+
+const cancelNewBtn = document.getElementById("cancel-new-trip-btn");
+if (cancelNewBtn) cancelNewBtn.addEventListener("click", closeNewTripModal);
+
+const newTripForm = document.getElementById("new-trip-form");
+if (newTripForm) newTripForm.addEventListener("submit", handleNewTripSubmit);
+
+const closeEditModal = document.getElementById("close-edit-intake-modal");
+if (closeEditModal) closeEditModal.addEventListener("click", closeEditIntakeModal);
+
+const cancelEditBtn = document.getElementById("cancel-edit-intake-btn");
+if (cancelEditBtn) cancelEditBtn.addEventListener("click", closeEditIntakeModal);
+
+const editIntakeForm = document.getElementById("edit-intake-form");
+if (editIntakeForm) editIntakeForm.addEventListener("submit", handleEditIntakeSubmit);
+
+const logoutBtn = document.getElementById("logout-btn");
+if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
 function setupCardsCarousel() {
   const track = document.getElementById("hero-cards-track");
@@ -398,5 +543,107 @@ function setupCardsCarousel() {
   track.dataset.cloned = "true";
 }
 
-document.addEventListener("DOMContentLoaded", setupCardsCarousel);
-document.addEventListener("DOMContentLoaded", loadTrips);
+function setConversationMode(active, title) {
+  const main = document.querySelector(".main-content");
+  const hero = document.getElementById("hero-showcase");
+  const compact = document.getElementById("compact-header-bar");
+  const compactTitle = document.getElementById("compact-header-title");
+  const inputContainer = document.getElementById("bottom-input-container");
+  const welcome = document.getElementById("chat-welcome-hero");
+
+  if (!main) return;
+
+  if (active) {
+    main.classList.add("conversation-active");
+    if (hero) hero.style.display = "none";
+    if (compact) compact.style.display = "flex";
+    if (inputContainer) inputContainer.style.display = "flex";
+    if (welcome) welcome.style.display = "none";
+  } else {
+    if (hero) {
+      main.classList.remove("conversation-active");
+      hero.style.display = "flex";
+      if (compact) compact.style.display = "none";
+      if (inputContainer) inputContainer.style.display = "none";
+      const chatContainer = document.getElementById("chat-messages");
+      if (chatContainer) chatContainer.innerHTML = "";
+      const hitl = document.getElementById("hitl-panel");
+      if (hitl) hitl.style.display = "none";
+      activeTripId = null;
+      activeThreadId = null;
+      document.querySelectorAll(".trip-item").forEach((el) => el.classList.remove("active"));
+    } else {
+      resetNewChat();
+    }
+  }
+}
+
+const exploreBtn = document.getElementById("btn-compact-explore");
+if (exploreBtn) {
+  exploreBtn.addEventListener("click", () => {
+    window.location.href = "index.html";
+  });
+}
+
+const navHome = document.getElementById("nav-home");
+if (navHome) {
+  navHome.addEventListener("click", (e) => {
+    if (document.getElementById("hero-showcase")) {
+      e.preventDefault();
+      setConversationMode(false);
+    } else {
+      window.location.href = "index.html";
+    }
+  });
+}
+
+const heroPlanBtn = document.getElementById("btn-hero-plan");
+if (heroPlanBtn) {
+  heroPlanBtn.addEventListener("click", () => {
+    window.location.href = "main.html";
+  });
+}
+
+const ctaPlanBtn = document.getElementById("btn-planner-cta");
+if (ctaPlanBtn) {
+  ctaPlanBtn.addEventListener("click", () => {
+    window.location.href = "main.html";
+  });
+}
+
+function updateLiveDateTime() {
+  const timeEl = document.getElementById("header-live-time");
+  const dateEl = document.getElementById("header-live-date");
+  if (!timeEl && !dateEl) return;
+
+  const now = new Date();
+  if (timeEl) {
+    timeEl.innerText = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+  if (dateEl) {
+    dateEl.innerText = now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  setupCardsCarousel();
+  updateLiveDateTime();
+  setInterval(updateLiveDateTime, 1000);
+  await loadTrips();
+
+  if (!document.getElementById("hero-showcase")) {
+    const params = new URLSearchParams(window.location.search);
+    const urlTripId = params.get("trip_id");
+    if (urlTripId) {
+      const activeEl = document.getElementById(`trip-item-${urlTripId}`);
+      if (activeEl) {
+        activeEl.click();
+      } else {
+        await loadTripIntake(urlTripId);
+        await loadTripMessages(urlTripId);
+      }
+    } else {
+      resetNewChat();
+    }
+  }
+});

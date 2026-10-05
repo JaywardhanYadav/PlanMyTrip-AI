@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanMyTrip AI — Interactive Travel Concierge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20261005_v14">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="index.html" class="brand-link" style="display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: inherit;">
+          <div class="brand-logo-badge">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="#38bdf8"/>
+              <circle cx="12" cy="12" r="2.5" fill="#ffffff"/>
+            </svg>
+          </div>
+          <div class="brand-text-block">
+            <div class="brand-title">PlanMyTrip AI</div>
+            <div class="brand-tagline">Your AI Travel Concierge</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="sidebar-action-wrap">
+        <button id="new-trip-btn" class="btn-new-trip">
+          <span class="btn-plus-icon">+</span> New Trip
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="index.html" class="nav-item" id="nav-home">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span>Home</span>
+        </a>
+        <a href="main.html" class="nav-item active" id="nav-trips">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+          <span>My Trips</span>
+        </a>
+        <a href="index.html" class="nav-item" id="nav-explore">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+          </svg>
+          <span>Explore</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-section-header">RECENT TRIPS</div>
+
+      <div id="trips-list" class="trips-list"></div>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-row">
+          <div class="user-avatar-circle" id="user-avatar-circle">J</div>
+          <div class="user-info-text">
+            <div class="user-name" id="user-display">Jaywardhan</div>
+            <div class="user-role">Traveler</div>
+          </div>
+          <button id="logout-btn" class="settings-btn" title="Logout / Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content conversation-active">
+      <div class="compact-header-bar" id="compact-header-bar">
+        <div class="header-datetime-badge" id="header-datetime-badge">
+          <span class="header-datetime-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </span>
+          <span id="header-live-time"></span>
+          <span class="header-datetime-dot"></span>
+          <span id="header-live-date"></span>
+        </div>
+      </div>
+
+      <div class="main-scroll-area" id="main-scroll-area">
+        <div class="chat-welcome-hero" id="chat-welcome-hero">
+          <div class="chat-welcome-badge">
+            <span class="badge-sparkle">✨</span>
+            <span>Autonomous Travel Concierge</span>
+          </div>
+          <h1 class="chat-welcome-headline">Where would you like to travel?</h1>
+          <p class="chat-welcome-subheadline">
+            Ask anything about flights in INR (₹), hand-picked stays, custom day-by-day itineraries, or budget optimization.
+          </p>
+
+          <div class="welcome-suggestions-grid">
+            <button type="button" class="welcome-suggestion-card" onclick="applyQuickPrompt('Plan a 5 day relaxing beach trip to Goa under ₹35,000 for 2 people.')">
+              <div class="suggestion-card-icon">🏖️</div>
+              <div class="suggestion-card-content">
+                <div class="suggestion-card-title">Goa Beach Retreat</div>
+                <div class="suggestion-card-desc">5 days under ₹35,000 with seaside stays and sightseeing</div>
+              </div>
+            </button>
+            <button type="button" class="welcome-suggestion-card" onclick="applyQuickPrompt('Plan a 4 day scenic mountain getaway to Shimla with heritage sites and nature walks.')">
+              <div class="suggestion-card-icon">🏔️</div>
+              <div class="suggestion-card-content">
+                <div class="suggestion-card-title">Shimla Mountain Escape</div>
+                <div class="suggestion-card-desc">4 days of hills, heritage strolls, and mountain views</div>
+              </div>
+            </button>
+            <button type="button" class="welcome-suggestion-card" onclick="applyQuickPrompt('Plan a 7 day cultural trip to Japan exploring Tokyo, Kyoto and Mt Fuji.')">
+              <div class="suggestion-card-icon">🌸</div>
+              <div class="suggestion-card-content">
+                <div class="suggestion-card-title">Japan Cultural Tour</div>
+                <div class="suggestion-card-desc">Tokyo, Kyoto and Mt Fuji with bullet train connections</div>
+              </div>
+            </button>
+            <button type="button" class="welcome-suggestion-card" onclick="applyQuickPrompt('Plan a 5 day heritage trip to Kerala with temples, backwaters and local cuisine.')">
+              <div class="suggestion-card-icon">🌴</div>
+              <div class="suggestion-card-content">
+                <div class="suggestion-card-title">Kerala Backwaters</div>
+                <div class="suggestion-card-desc">Houseboat cruises, tea plantations, and authentic dining</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div id="chat-messages" class="chat-container"></div>
+
+        <div id="hitl-panel" class="hitl-panel" style="display: none;">
+          <div class="hitl-info">
+            <h4>Human-in-the-Loop Review Required</h4>
+            <p>Review the generated flight, hotel, and activity options above. Click a card to switch choices, or approve the proposal to synthesize the final plan.</p>
+          </div>
+          <div class="hitl-actions">
+            <button id="hitl-approve-btn" class="btn-success">Approve Plan</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-input-container" id="bottom-input-container">
+        <div class="capsule-input-box">
+          <button type="button" class="btn-capsule-attach" title="Attach file or reference">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+            </svg>
+          </button>
+          <input type="text" id="chat-input" class="capsule-text-input" placeholder="Ask me to plan a trip, compare destinations, or find best flights..." autocomplete="off">
+          <button type="button" id="chat-send-btn" class="btn-capsule-send" title="Send message">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+        <div class="input-caption-subtext">PlanMyTrip AI autonomous multi-agent orchestration. All fares in INR (₹).</div>
+      </div>
+    </main>
+  </div>
+
+  <div id="edit-intake-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Trip Preferences</h3>
+        <button class="close-btn" id="close-edit-intake-modal">&times;</button>
+      </div>
+      <form id="edit-intake-form">
+        <div class="form-group">
+          <label for="edit-intake-departure">Departure City / Airport</label>
+          <input type="text" id="edit-intake-departure" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-intake-destination">Destination</label>
+          <input type="text" id="edit-intake-destination" class="form-input" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-intake-start-date">Start Date</label>
+            <input type="date" id="edit-intake-start-date" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="edit-intake-end-date">End Date</label>
+            <input type="date" id="edit-intake-end-date" class="form-input">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-intake-budget">Budget (in INR / ₹)</label>
+          <input type="text" id="edit-intake-budget" class="form-input" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancel-edit-intake-btn">Cancel</button>
+          <button type="submit" class="btn-primary" style="width: auto;">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="trips.js?v=20261005_v15"></script>
+  <script src="app.js?v=20261005_v15"></script>
+</body>
+</html>
