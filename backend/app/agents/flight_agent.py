@@ -22,15 +22,17 @@ def resolve_iata(name: str | None, default: str) -> str:
         return default
     clean = name.upper()
     mapping = {
+        "BLR": "BLR", "BANGALORE": "BLR", "BENGALURU": "BLR", "BENGLORE": "BLR", "BENGALORE": "BLR",
         "DEL": "DEL", "DELHI": "DEL", "NEW DELHI": "DEL",
         "BOM": "BOM", "MUMBAI": "BOM", "BOMBAY": "BOM",
-        "BLR": "BLR", "BANGALORE": "BLR", "BENGALURU": "BLR",
         "GOI": "GOI", "GOA": "GOI", "GOX": "GOI", "DABOLIM": "GOI", "MOPA": "GOX",
-        "CCU": "CCU", "KOLKATA": "CCU",
+        "CCU": "CCU", "KOLKATA": "CCU", "CALCUTTA": "CCU",
         "HYD": "HYD", "HYDERABAD": "HYD",
-        "MAA": "MAA", "CHENNAI": "MAA",
+        "MAA": "MAA", "CHENNAI": "MAA", "MADRAS": "MAA",
         "JAI": "JAI", "JAIPUR": "JAI",
         "PNQ": "PNQ", "PUNE": "PNQ",
+        "COK": "COK", "KOCHI": "COK", "COCHIN": "COK",
+        "AMD": "AMD", "AHMEDABAD": "AMD",
         "CDG": "CDG", "PARIS": "CDG",
         "LHR": "LHR", "LONDON": "LHR",
         "NRT": "NRT", "TOKYO": "NRT",
@@ -51,33 +53,48 @@ def parse_or_default_date(d_str: str | None, fallback: date) -> date:
 
 
 async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    origin = resolve_iata(state.get("departure_station"), "PNQ")
-    destination = resolve_iata(state.get("destination"), "GOI")
+    dest_str = (state.get("destination") or "").lower()
+    messages = state.get("messages", [])
+    for m in messages:
+        dest_str += " " + str(m.content).lower()
+
+    if any(b in dest_str for b in ["bengl", "bangal", "bengal", "blr"]):
+        destination = "BLR"
+    elif any(g in dest_str for g in ["goa", "goi", "gox", "dabolim"]):
+        destination = "GOI"
+    elif any(j in dest_str for j in ["jaipur", "jai"]):
+        destination = "JAI"
+    elif any(mu in dest_str for mu in ["mumbai", "bombay", "bom"]):
+        destination = "BOM"
+    elif any(d in dest_str for d in ["delhi", "del"]):
+        destination = "DEL"
+    else:
+        destination = resolve_iata(state.get("destination"), "BLR")
+
+    dep_str = (state.get("departure_station") or "").lower()
+    for m in messages:
+        dep_str += " " + str(m.content).lower()
+
+    if any(p in dep_str for p in ["pune", "pnq"]):
+        origin = "PNQ"
+    elif any(d in dep_str for d in ["delhi", "del"]):
+        origin = "DEL"
+    elif any(m in dep_str for m in ["mumbai", "bom"]):
+        origin = "BOM"
+    elif any(b in dep_str for b in ["bengl", "bangal", "blr"]):
+        origin = "BLR"
+    else:
+        origin = resolve_iata(state.get("departure_station"), "PNQ")
+
+    if origin == destination:
+        origin = "PNQ" if destination != "PNQ" else "BOM"
+
     travelers = state.get("travelers_count") or 1
     if travelers < 1:
         travelers = 1
 
     dep_date_obj = parse_or_default_date(state.get("start_date"), date(2026, 12, 1))
     ret_date_obj = parse_or_default_date(state.get("end_date"), date(2026, 12, 4))
-
-    messages = state.get("messages", [])
-    if messages:
-        last_msg = str(messages[-1].content).lower()
-        if "goa" in last_msg or "goi" in last_msg:
-            destination = "GOI"
-        elif "mumbai" in last_msg or "bom" in last_msg:
-            destination = "BOM"
-        elif "delhi" in last_msg or "del" in last_msg:
-            destination = "DEL"
-        elif "bangalore" in last_msg or "blr" in last_msg:
-            destination = "BLR"
-        elif "pune" in last_msg or "pnq" in last_msg:
-            origin = "PNQ"
-        elif "jaipur" in last_msg or "jai" in last_msg:
-            destination = "JAI"
-
-    if origin == destination:
-        origin = "BOM" if destination == "DEL" else "DEL"
 
     registry = MCPRegistry()
     raw_options: list[object] = []
@@ -101,19 +118,19 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
                 for leg in legs_raw:
                     if isinstance(leg, dict):
                         dep_raw = str(leg.get("departure_time", f"{dep_date_obj.isoformat()}T08:00:00Z")).replace("Z", "+00:00")
-                        arr_raw = str(leg.get("arrival_time", f"{dep_date_obj.isoformat()}T10:15:00Z")).replace("Z", "+00:00")
+                        arr_raw = str(leg.get("arrival_time", f"{dep_date_obj.isoformat()}T09:25:00Z")).replace("Z", "+00:00")
                         legs.append(
                             FlightLeg(
                                 origin_iata=str(leg.get("origin_iata", origin)),
                                 destination_iata=str(leg.get("destination_iata", destination)),
                                 carrier_code=str(leg.get("carrier_code", "6E")),
-                                flight_number=str(leg.get("flight_number", "542")),
+                                flight_number=str(leg.get("flight_number", "421")),
                                 departure_time=datetime.fromisoformat(dep_raw),
                                 arrival_time=datetime.fromisoformat(arr_raw),
-                                duration_minutes=int(leg.get("duration_minutes", 75)),
+                                duration_minutes=int(leg.get("duration_minutes", 80)),
                             )
                         )
-                base_fare = Decimal(str(item.get("fare_amount", "4200.00")))
+                base_fare = Decimal(str(item.get("fare_amount", "4500.00")))
                 total_fare = base_fare * Decimal(str(travelers))
                 curr = str(item.get("currency", "INR"))
                 outbound_options.append(
@@ -133,31 +150,31 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
             "id_suffix": "morning",
             "carrier": "IndiGo",
             "carrier_code": "6E",
-            "flight_number": "543",
+            "flight_number": "421",
             "dep_time": time(7, 15),
-            "arr_time": time(8, 30),
-            "duration": 75,
-            "unit_fare": Decimal("4200.00"),
+            "arr_time": time(8, 35),
+            "duration": 80,
+            "unit_fare": Decimal("4400.00"),
         },
         {
             "id_suffix": "afternoon",
             "carrier": "Air India",
             "carrier_code": "AI",
-            "flight_number": "842",
-            "dep_time": time(13, 20),
-            "arr_time": time(14, 45),
+            "flight_number": "508",
+            "dep_time": time(13, 10),
+            "arr_time": time(14, 35),
             "duration": 85,
-            "unit_fare": Decimal("4850.00"),
+            "unit_fare": Decimal("4950.00"),
         },
         {
             "id_suffix": "evening",
             "carrier": "SpiceJet",
             "carrier_code": "SG",
-            "flight_number": "211",
-            "dep_time": time(18, 10),
-            "arr_time": time(19, 25),
-            "duration": 75,
-            "unit_fare": Decimal("3950.00"),
+            "flight_number": "314",
+            "dep_time": time(18, 20),
+            "arr_time": time(19, 45),
+            "duration": 85,
+            "unit_fare": Decimal("4150.00"),
         },
     ]
 
@@ -194,21 +211,21 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
             "id_suffix": "afternoon",
             "carrier": "IndiGo",
             "carrier_code": "6E",
-            "flight_number": "654",
-            "dep_time": time(14, 45),
-            "arr_time": time(16, 0),
-            "duration": 75,
-            "unit_fare": Decimal("4400.00"),
+            "flight_number": "422",
+            "dep_time": time(14, 30),
+            "arr_time": time(15, 55),
+            "duration": 85,
+            "unit_fare": Decimal("4600.00"),
         },
         {
             "id_suffix": "night",
             "carrier": "Air India Express",
             "carrier_code": "IX",
-            "flight_number": "112",
-            "dep_time": time(20, 30),
-            "arr_time": time(21, 45),
-            "duration": 75,
-            "unit_fare": Decimal("4100.00"),
+            "flight_number": "982",
+            "dep_time": time(20, 15),
+            "arr_time": time(21, 35),
+            "duration": 80,
+            "unit_fare": Decimal("4250.00"),
         },
     ]
 

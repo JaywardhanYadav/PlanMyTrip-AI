@@ -5,6 +5,43 @@ from ..mcp_client.registry import MCPRegistry
 
 
 HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
+    "BANGALORE": [
+        {
+            "tier": "ultra_luxury",
+            "name": "The Leela Palace Bengaluru",
+            "location": "Old Airport Road, Bengaluru",
+            "nightly_rate": Decimal("24500.00"),
+            "amenities": "Grand royal palace architecture, 7 acres of private gardens, award-winning spa, maharaja suites, signature dining at Jamavar and Citrus.",
+        },
+        {
+            "tier": "heritage_luxury",
+            "name": "The Taj West End, Bengaluru",
+            "location": "Racecourse Road, Central Bengaluru",
+            "nightly_rate": Decimal("19500.00"),
+            "amenities": "20-acre heritage tropical sanctuary, open-air garden pavilions, Jiva luxury spa, legendary Karavalli coastal restaurant.",
+        },
+        {
+            "tier": "business_luxury",
+            "name": "ITC Gardenia, Luxury Collection",
+            "location": "Residency Road, Central Bengaluru",
+            "nightly_rate": Decimal("16500.00"),
+            "amenities": "Wind-cooled green architecture, Kaya Kalp luxury spa, rooftop infinity pool, signature Edo Japanese & Kebabs & Kurries dining.",
+        },
+        {
+            "tier": "comfort",
+            "name": "Courtyard by Marriott Bengaluru Hebbal",
+            "location": "Hebbal / Outer Ring Road, Bengaluru",
+            "nightly_rate": Decimal("6500.00"),
+            "amenities": "Rooftop swimming pool overlooking Nagavara lake, modern fitness center, multi-cuisine restaurant, close to airport highway.",
+        },
+        {
+            "tier": "budget",
+            "name": "BloomSuites Indiranagar",
+            "location": "100ft Road, Indiranagar, Bengaluru",
+            "nightly_rate": Decimal("3200.00"),
+            "amenities": "Boutique smart rooms, high-speed Wi-Fi, air conditioning, buffet breakfast, surrounded by trendy cafes and boutiques.",
+        },
+    ],
     "GOA": [
         {
             "tier": "comfort",
@@ -17,7 +54,7 @@ HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
             "tier": "luxury",
             "name": "Taj Fort Aguada Resort & Spa",
             "location": "Sinquerim Beach, North Goa",
-            "nightly_rate": Decimal("13500.00"),
+            "nightly_rate": Decimal("14500.00"),
             "amenities": "Clifftop ocean infinity pool, Jiva luxury spa, fine dining, tennis court, direct beach access.",
         },
         {
@@ -41,7 +78,7 @@ HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
             "name": "Shahpura House Heritage Hotel",
             "location": "Bani Park, Central Jaipur",
             "nightly_rate": Decimal("4800.00"),
-            "amenities": "Traditional royal architecture, swimming pool, rooftop rooftop dining overlooking city, cultural dance shows.",
+            "amenities": "Traditional royal architecture, swimming pool, rooftop dining overlooking city, cultural dance shows.",
         },
         {
             "tier": "luxury",
@@ -68,10 +105,10 @@ HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
         },
         {
             "tier": "luxury",
-            "name": "The Taj Mahal Tower, Mumbai",
+            "name": "The Taj Mahal Palace, Mumbai",
             "location": "Apollo Bunder, Colaba, Mumbai",
-            "nightly_rate": Decimal("18500.00"),
-            "amenities": "Iconic Arabian Sea views, luxury spa, outdoor pool, world-renowned heritage restaurants and high tea.",
+            "nightly_rate": Decimal("26500.00"),
+            "amenities": "Iconic Arabian Sea views, heritage palace wing, luxury spa, outdoor pool, world-renowned heritage restaurants and high tea.",
         },
         {
             "tier": "budget",
@@ -84,11 +121,38 @@ HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
 }
 
 
-def get_default_catalog(dest: str) -> list[dict[str, object]]:
+def get_default_catalog(dest: str, budget: Decimal) -> list[dict[str, object]]:
     clean = dest.upper().strip()
     for k, v in HOTEL_CATALOG.items():
         if k in clean or clean in k:
+            if budget >= Decimal("200000.00"):
+                return [h for h in v if str(h.get("tier")) in ["ultra_luxury", "heritage_luxury", "business_luxury", "luxury", "comfort"]]
             return v
+
+    if budget >= Decimal("200000.00"):
+        return [
+            {
+                "tier": "ultra_luxury",
+                "name": f"The Grand Palace & Spa, {dest}",
+                "location": f"Prime Central District, {dest}",
+                "nightly_rate": Decimal("22000.00"),
+                "amenities": "5-star luxury wellness spa, private butler service, infinity pool, premier dining pavilions, luxury suites.",
+            },
+            {
+                "tier": "heritage_luxury",
+                "name": f"Taj Heritage Sanctuary, {dest}",
+                "location": f"Exclusive Landmark Enclave, {dest}",
+                "nightly_rate": Decimal("18000.00"),
+                "amenities": "Lush estate gardens, gourmet dining, signature spa, private pool access, concierge chauffeur.",
+            },
+            {
+                "tier": "comfort",
+                "name": f"Marriott Executive Suites, {dest}",
+                "location": f"City Centre, {dest}",
+                "nightly_rate": Decimal("7500.00"),
+                "amenities": "Rooftop swimming pool, 24/7 fitness club, executive lounge, complimentary buffet breakfast.",
+            },
+        ]
 
     return [
         {
@@ -100,10 +164,10 @@ def get_default_catalog(dest: str) -> list[dict[str, object]]:
         },
         {
             "tier": "luxury",
-            "name": f"The Royal Palace & Spa {dest}",
-            "location": f"Prime Waterfront / Landmark Area, {dest}",
+            "name": f"The Royal Landmark Hotel {dest}",
+            "location": f"Prime Landmark Area, {dest}",
             "nightly_rate": Decimal("12500.00"),
-            "amenities": "Luxury wellness spa, infinity pool, valet parking, private balcony suites, concierge lounge.",
+            "amenities": "Luxury wellness spa, pool, valet parking, private balcony suites, concierge lounge.",
         },
         {
             "tier": "budget",
@@ -116,7 +180,24 @@ def get_default_catalog(dest: str) -> list[dict[str, object]]:
 
 
 async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    destination = state.get("destination") or "Goa"
+    dest_str = (state.get("destination") or "").lower()
+    messages = state.get("messages", [])
+    for m in messages:
+        dest_str += " " + str(m.content).lower()
+
+    if any(b in dest_str for b in ["bengl", "bangal", "bengal", "blr"]):
+        destination = "Bangalore"
+    elif any(g in dest_str for g in ["goa", "goi", "dabolim"]):
+        destination = "Goa"
+    elif any(j in dest_str for j in ["jaipur", "jai"]):
+        destination = "Jaipur"
+    elif any(m in dest_str for m in ["mumbai", "bombay", "bom"]):
+        destination = "Mumbai"
+    elif any(d in dest_str for d in ["delhi", "del"]):
+        destination = "Delhi"
+    else:
+        destination = state.get("destination") or "Bangalore"
+
     nights = 3
     start_str = state.get("start_date")
     end_str = state.get("end_date")
@@ -131,19 +212,8 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
         except Exception:
             nights = 3
 
-    messages = state.get("messages", [])
-    if messages:
-        last_msg = str(messages[-1].content).lower()
-        if "goa" in last_msg:
-            destination = "Goa"
-        elif "mumbai" in last_msg:
-            destination = "Mumbai"
-        elif "delhi" in last_msg:
-            destination = "Delhi"
-        elif "jaipur" in last_msg:
-            destination = "Jaipur"
-        elif "bangalore" in last_msg:
-            destination = "Bangalore"
+    trip_budget = state.get("trip_budget")
+    budget_dec = trip_budget.amount if trip_budget else Decimal("50000.00")
 
     registry = MCPRegistry()
     raw_hotels: list[object] = []
@@ -169,7 +239,7 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
                 amenities = str(item.get("cancellation_terms", "Free cancellation within 24h. Outdoor pool, restaurant, Wi-Fi."))
                 parsed_hotels.append(
                     HotelOption(
-                        option_id=str(item.get("option_id", f"ht_{destination}_mcp")),
+                        option_id=str(item.get("option_id", f"ht_{destination.lower()}_mcp")),
                         name=str(item.get("name", f"{destination} Grand Stay")),
                         location=str(item.get("location", f"Central {destination}")),
                         nightly_rate=Money(amount=nightly_dec, currency=curr),
@@ -180,7 +250,7 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
                     )
                 )
 
-    catalog = get_default_catalog(destination)
+    catalog = get_default_catalog(destination, budget_dec)
     for cat in catalog:
         nightly_dec = Decimal(str(cat["nightly_rate"]))
         total_dec = nightly_dec * Decimal(str(nights))

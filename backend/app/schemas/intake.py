@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class IntakeSupervisorEvaluation(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=False, extra="forbid")
 
     intent: Literal["chit_chat", "off_topic", "travel_planning"] = Field(
         default="travel_planning",

@@ -4,6 +4,40 @@ from ..mcp_client.registry import MCPRegistry
 
 
 DESTINATION_KNOWLEDGE: dict[str, dict[str, Any]] = {
+    "BANGALORE": {
+        "zones": [
+            {
+                "zone_name": "Central Heritage & Royal Enclaves",
+                "places": [
+                    "Bangalore Palace (Tudor-style royal estate with wooden carvings & courtyard)",
+                    "Vidhana Soudha & Attara Kacheri (Majestic Neo-Dravidian architecture)",
+                    "Cubbon Park (Bespoke bamboo groves & tree-lined walkways)",
+                    "UB City & Lavelle Road (Luxury boutiques, open-air alfresco dining & rooftop lounges)"
+                ],
+                "recommended_stay_area": "Racecourse Road, Residency Road, or Old Airport Road",
+                "stay_reason": "Central location offering convenient access to top heritage landmarks and upscale dining without prolonged transit."
+            },
+            {
+                "zone_name": "Historic Gardens & Iconic Flavors",
+                "places": [
+                    "Lalbagh Botanical Garden (Famous Victorian Glass House & centuries-old bonsai collection)",
+                    "Tipu Sultan's Summer Palace (Intricate teakwood architecture & museum)",
+                    "Bull Temple & Basavanagudi heritage food trail (Vidyarthi Bhavan & traditional filter coffee)",
+                    "National Gallery of Modern Art (Heritage colonial mansion housing premier art exhibits)"
+                ],
+                "recommended_stay_area": "Central Bengaluru Heritage Corridor",
+                "stay_reason": "Puts you within 15-20 minutes of iconic parks, royal palaces, and traditional Bangalore breakfast hubs."
+            }
+        ],
+        "transit_guide": {
+            "best_option": "Chauffeur-driven private luxury cab or Uber Premier",
+            "car_rental_rate": "₹3,500 - ₹5,000 per day for premium chauffeur sedan (Innova Crysta / Luxury vehicle)",
+            "scooter_rental_rate": "₹500 - ₹700 per day",
+            "taxi_guidance": "Kempegowda International Airport (BLR) is ~35 km from city center. Use the official prepaid airport taxi or Uber Premier (~₹1,200 - ₹1,500). Dedicated full-day chauffeur cabs cost ~₹2,200 - ₹3,500 for seamless city transit.",
+            "easiest_way": "Book a dedicated private chauffeur cab for full-day travel to navigate Bengaluru comfortably with air-conditioning."
+        },
+        "stay_strategy": "For a 3-day couple vacation, staying at the same luxury 5-star hotel in Central Bengaluru (like The Leela Palace, The Taj West End, or ITC Gardenia) is ideal so you can indulge in spa treatments and fine dining without switching hotels."
+    },
     "GOA": {
         "zones": [
             {
@@ -109,6 +143,9 @@ DESTINATION_KNOWLEDGE: dict[str, dict[str, Any]] = {
 
 def get_destination_cluster_data(destination: str) -> dict[str, Any]:
     dest_clean = destination.upper().strip()
+    if any(b in dest_clean for b in ["BENGL", "BANGAL", "BENGAL", "BLR"]):
+        return DESTINATION_KNOWLEDGE["BANGALORE"]
+
     for key, data in DESTINATION_KNOWLEDGE.items():
         if key in dest_clean or dest_clean in key:
             return data
@@ -141,27 +178,30 @@ def get_destination_cluster_data(destination: str) -> dict[str, Any]:
             "car_rental_rate": "₹1,500 - ₹2,500 per day with driver",
             "scooter_rental_rate": "₹500 - ₹700 per day",
             "taxi_guidance": "Airport prepaid taxi counter upon arrival is reliable. Local cabs or ride-hailing for day-to-day transit.",
-            "easiest_way": f"Hire a dedicated private day cab (~₹2,000/day) or self-drive vehicle for seamless sightseeing across {destination}."
+            "easiest_way": f"Hire a dedicated private day cab (~₹2,000/day) or chauffeur vehicle for seamless sightseeing across {destination}."
         },
         "stay_strategy": f"For trips under 4 days, staying at the same central hotel in {destination} is recommended to maximize sightseeing time without checking in and out."
     }
 
 
 async def places_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    destination = state.get("destination") or "Goa"
+    dest_str = (state.get("destination") or "").lower()
     messages = state.get("messages", [])
-    if messages:
-        last_msg = str(messages[-1].content).lower()
-        if "goa" in last_msg:
-            destination = "Goa"
-        elif "mumbai" in last_msg:
-            destination = "Mumbai"
-        elif "jaipur" in last_msg:
-            destination = "Jaipur"
-        elif "delhi" in last_msg:
-            destination = "Delhi"
-        elif "bangalore" in last_msg:
-            destination = "Bangalore"
+    for m in messages:
+        dest_str += " " + str(m.content).lower()
+
+    if any(b in dest_str for b in ["bengl", "bangal", "bengal", "blr"]):
+        destination = "Bangalore"
+    elif any(g in dest_str for g in ["goa", "goi", "dabolim"]):
+        destination = "Goa"
+    elif any(j in dest_str for j in ["jaipur", "jai"]):
+        destination = "Jaipur"
+    elif any(m in dest_str for m in ["mumbai", "bombay", "bom"]):
+        destination = "Mumbai"
+    elif any(d in dest_str for d in ["delhi", "del"]):
+        destination = "Delhi"
+    else:
+        destination = state.get("destination") or "Bangalore"
 
     registry = MCPRegistry()
     mcp_places: list[dict[str, Any]] = []

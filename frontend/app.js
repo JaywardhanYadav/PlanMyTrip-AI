@@ -243,7 +243,7 @@ function renderOptionsGrid() {
             Route: ${f.legs[0]?.origin_iata} ➔ ${f.legs[0]?.destination_iata}
           </div>
         </div>
-        <button class="btn-secondary" onclick="selectFlightOption('${f.option_id}')">Select Flight</button>
+        <div style="margin-top: 8px;"><span style="font-size: 0.75rem; color: #2563eb; background: #eff6ff; padding: 4px 8px; border-radius: 4px; font-weight: 600;">Included in Itinerary</span></div>
       </div>
     `;
   });
@@ -262,7 +262,7 @@ function renderOptionsGrid() {
             Nightly: ₹${formattedNightly}
           </div>
         </div>
-        <button class="btn-secondary" onclick="selectHotelOption('${h.option_id}')">Select Hotel</button>
+        <div style="margin-top: 8px;"><span style="font-size: 0.75rem; color: #059669; background: #ecfdf5; padding: 4px 8px; border-radius: 4px; font-weight: 600;">Available Option</span></div>
       </div>
     `;
   });
@@ -271,13 +271,9 @@ function renderOptionsGrid() {
   scrollChatToBottom();
 }
 
-function selectFlightOption(optionId) {
-  resumeWithFeedback("edit_flight", { selected_flight_id: optionId });
-}
+function selectFlightOption(optionId) {}
 
-function selectHotelOption(optionId) {
-  resumeWithFeedback("edit_hotel", { selected_hotel_id: optionId });
-}
+function selectHotelOption(optionId) {}
 
 function approvePlan() {
   resumeWithFeedback("approve", {});

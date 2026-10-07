@@ -49,16 +49,16 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
     )
 
     dep_station = state.get("departure_station") or "Pune"
-    dest = state.get("destination") or "Goa"
-    start_d = state.get("start_date") or "2026-12-01"
-    end_d = state.get("end_date") or "2026-12-04"
+    dest = state.get("destination") or "Bangalore"
+    start_d = state.get("start_date") or "2026-10-11"
+    end_d = state.get("end_date") or "2026-10-14"
 
     outbound_flights_text = ""
     for idx, f in enumerate(flight_options, 1):
         leg = f.legs[0] if f.legs else None
         dep_str = leg.departure_time.strftime("%I:%M %p") if leg else "Morning"
         arr_str = leg.arrival_time.strftime("%I:%M %p") if leg else "Afternoon"
-        dur = leg.duration_minutes if leg else 75
+        dur = leg.duration_minutes if leg else 80
         fl_no = f"{leg.carrier_code}-{leg.flight_number}" if leg else "Non-stop"
         per_person = (f.fare.amount / Decimal(str(travelers))).quantize(Decimal("1"))
         outbound_flights_text += (
@@ -71,7 +71,7 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
         leg = f.legs[0] if f.legs else None
         dep_str = leg.departure_time.strftime("%I:%M %p") if leg else "Afternoon"
         arr_str = leg.arrival_time.strftime("%I:%M %p") if leg else "Evening"
-        dur = leg.duration_minutes if leg else 75
+        dur = leg.duration_minutes if leg else 80
         fl_no = f"{leg.carrier_code}-{leg.flight_number}" if leg else "Non-stop"
         per_person = (f.fare.amount / Decimal(str(travelers))).quantize(Decimal("1"))
         return_flights_text += (
@@ -112,58 +112,65 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
             places_summary_text += f"  * {p}\n"
         places_summary_text += f"  * *Stay in area*: {z_stay} ({z_reason})\n"
 
-    easiest_transit = str(transit_guide_dict.get("easiest_way", "Self-drive rental or private day cab."))
-    rental_car_rate = str(transit_guide_dict.get("car_rental_rate", "₹1,500/day"))
-    rental_scooter_rate = str(transit_guide_dict.get("scooter_rental_rate", "₹400/day"))
-    taxi_guidance = str(transit_guide_dict.get("taxi_guidance", "Prepaid taxis or app-based cabs readily available."))
+    easiest_transit = str(transit_guide_dict.get("easiest_way", "Chauffeur cab or Uber Premier."))
+    rental_car_rate = str(transit_guide_dict.get("car_rental_rate", "₹3,000/day for chauffeur vehicle"))
+    rental_scooter_rate = str(transit_guide_dict.get("scooter_rental_rate", "₹500/day"))
+    taxi_guidance = str(transit_guide_dict.get("taxi_guidance", "Airport prepaid taxi or app cabs readily available."))
 
     client = get_openai_client()
     settings = get_settings()
 
     prompt = (
-        f"You are the Synthesis Agent for PlanMyTrip AI. You must construct a rich, highly practical, chronologically structured day-by-day travel plan for {travelers} traveler{'s' if travelers > 1 else ''}.\n\n"
+        f"You are the Synthesis Agent for PlanMyTrip AI. You are a dedicated travel planner, NOT a budget accountant.\n"
+        f"Construct a rich, practical, chronologically structured day-by-day travel itinerary for {travelers} traveler{'s' if travelers > 1 else ''}.\n\n"
         f"Trip Specs:\n"
         f"- Origin / Departure City: {dep_station}\n"
         f"- Destination: {dest}\n"
         f"- Number of Travelers: {travelers}\n"
-        f"- Travel Dates: {start_d} to {end_d}\n"
-        f"- Budget Cap: {budget_result.total_cap.to_formatted_str()} ({budget_result.total_cap.to_words()})\n\n"
+        f"- Travel Dates: {start_d} to {end_d}\n\n"
         f"Data Gathered by Worker Agents:\n"
         f"AVAILABLE OUTBOUND FLIGHTS (Day 1):\n{outbound_flights_text or '  * Scheduled flights from ' + dep_station + ' to ' + dest}\n\n"
         f"AVAILABLE HOTELS TO STAY & REST:\n{hotels_text or '  * Handpicked hotels in ' + dest}\n\n"
         f"PLACES & ZONES TO VISIT:\n{places_summary_text}\n\n"
         f"TRANSIT & LOCAL TRAVEL GUIDANCE:\n"
         f"- Easiest way: {easiest_transit}\n"
-        f"- Rental car rate: {rental_car_rate}\n"
-        f"- Rental scooter/bike: {rental_scooter_rate}\n"
-        f"- Taxi & cab guidance: {taxi_guidance}\n"
+        f"- Rental / Chauffeur car rate: {rental_car_rate}\n"
+        f"- Scooter/bike: {rental_scooter_rate}\n"
+        f"- Taxi guidance: {taxi_guidance}\n"
         f"- Stay strategy: {stay_strategy_text}\n\n"
         f"AVAILABLE RETURN FLIGHTS (Last Day):\n{return_flights_text or '  * Scheduled return flights to ' + dep_station}\n\n"
         f"MANDATORY FORMAT RULES:\n"
-        f"You must strictly present the itinerary broken down into days:\n\n"
+        f"Present the itinerary broken down chronologically into days:\n\n"
         f"### Day 1: Arrival, Transfers & Settling In\n"
-        f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show all options above with timings, airline, and prices (per person & total for {travelers}).\n"
-        f"- **Airport Transfer**: Tell how to get from airport to hotel (e.g. prepaid taxi / app cab) with typical rate.\n"
-        f"- **Available Hotels to Check-in & Rest**: List all available hotel options above with their nightly prices, total stay prices, location, and hotel amenities/activities (pool, spa, beach access, restaurant).\n"
-        f"- **Evening Plan**: Unwind and relax at hotel or nearby beach/promenade.\n\n"
+        f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show all options with timings, airline, flight number, and prices (per person & total for {travelers}).\n"
+        f"- **Airport Transfer**: Clear instructions on airport transfer with typical fare.\n"
+        f"- **Available Hotels to Check-in & Rest**: List all available hotel options with nightly prices, total stay prices, location, and amenities/activities.\n"
+        f"- **Evening Plan**: Unwind and relax at hotel or nearby dining.\n\n"
         f"### Day 2: Exploring Nearby Attractions & Smart Stay\n"
-        f"- **Planned Sightseeing**: List places near the city/zone to visit.\n"
-        f"- **How to Visit & Easiest Transport**: Detail rental cars, scooters, or Uber/cabs with daily rates so the traveler knows exactly how to travel.\n"
-        f"- **Where to Stay Tonight**: Explain whether they should stay at the same Day 1 hotel (if places are nearby) or switch to a different hotel (if visiting a far-off area).\n\n"
+        f"- **Planned Sightseeing**: Clustered attractions near the city/zone.\n"
+        f"- **How to Visit & Easiest Transport**: Specific transport advice (chauffeur cab, rental car, Uber) with rates.\n"
+        f"- **Where to Stay Tonight**: Explain whether to stay at the same Day 1 hotel or change area.\n\n"
         f"### Day 3 (or Final Day): Morning Wrap-Up & Return Journey\n"
-        f"- **Morning Plan**: Hotel check-out, local breakfast/souvenirs.\n"
-        f"- **Airport Transfer**: Easiest cab back to airport.\n"
-        f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show all return flight options with timings, airline, and prices.\n\n"
-        f"### 💰 Budget & Cost Summary\n"
-        f"- Clear financial breakdown for Flights, Hotels, Local Transit, and Activities in Indian Rupees (₹ INR).\n"
-        f"- Compare against Budget Cap of {budget_result.total_cap.to_formatted_str()}.\n"
+        f"- **Morning Plan**: Hotel check-out, breakfast, and local shopping.\n"
+        f"- **Airport Transfer**: Cab back to airport.\n"
+        f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show return flight options with timings, airline, and prices.\n\n"
+        f"### 💰 Estimated Trip Cost Breakdown\n"
+        f"CRITICAL RULE: We are a travel planner, NOT a budget calculator. Do NOT calculate 'Remaining Budget' or 'Remaining Balance'. Do NOT subtract from any cap. "
+        f"Calculate and show the actual estimated average figures in INR for each component based on the options above:\n"
+        f"- **Roundtrip Flights (for {travelers})**: (Calculate actual sum of outbound and return options)\n"
+        f"- **Accommodation (Total Stay)**: (Actual total stay cost for the recommended hotel option)\n"
+        f"- **Airport Transfers & Local Transit**: (Estimated cost for chauffeur cabs/transfers)\n"
+        f"- **Dining & Activities**: (Estimated realistic cost for couple dining and sightseeing)\n"
+        f"- **Total Estimated Average Trip Cost**: (Actual mathematical sum of the above components in ₹)\n"
+        f"Never output placeholder letters like X, Y, or Z; output real calculated rupee figures.\n"
+        f"Conclude warmly with a short wishing note for their trip."
     )
 
     try:
         response = await client.chat.completions.create(
             model=settings.OPENAI_MODEL_WORKER,
             messages=[
-                {"role": "system", "content": "You are a professional travel synthesis consultant specializing in Indian and global travel planning in Indian Rupees (INR). Provide clear, beautiful Markdown itineraries."},
+                {"role": "system", "content": "You are a professional travel planner specializing in Indian and global travel planning in Indian Rupees (INR). Provide clear, beautiful Markdown itineraries without budget accounting subtraction."},
                 {"role": "user", "content": prompt},
             ],
             max_tokens=settings.OPENAI_MAX_TOKENS_WORKER,
@@ -175,22 +182,22 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
     except Exception:
         draft = (
             f"### Proposed {dest} Travel Itinerary ({travelers} Traveler{'s' if travelers > 1 else ''})\n\n"
-            f"**Dates:** {start_d} to {end_d} | **Budget Cap:** {budget_result.total_cap.to_formatted_str()}\n\n"
+            f"**Travel Dates:** {start_d} to {end_d}\n\n"
             f"---\n\n"
             f"### Day 1: Arrival, Transfers & Settling In\n\n"
             f"✈️ **Available Outbound Flights ({dep_station} ➔ {dest}):**\n"
             f"{outbound_flights_text}\n"
-            f"🚖 **Airport Transfer:** Easiest option is a prepaid airport taxi counter or app-based cab directly to your hotel (~{taxi_guidance}).\n\n"
+            f"🚖 **Airport Transfer:** Easiest option is a prepaid airport taxi counter or app cab directly to your hotel (~{taxi_guidance}).\n\n"
             f"🏨 **Available Nearby Hotels to Stay & Rest:**\n"
             f"{hotels_text}\n"
-            f"🌅 **Evening Relaxation:** Check-in, refresh at the pool or resort grounds, and enjoy sunset dining.\n\n"
+            f"🌅 **Evening Relaxation:** Check-in, refresh at the hotel pool or spa, and enjoy fine dining.\n\n"
             f"---\n\n"
             f"### Day 2: City & Attraction Exploration\n\n"
             f"📍 **Places to Visit:**\n"
             f"{places_summary_text}\n"
             f"🚗 **How to Visit & Easiest Transport:**\n"
             f"* **{easiest_transit}**\n"
-            f"* Self-Drive Rental Cars: {rental_car_rate}\n"
+            f"* Chauffeur / Rental Vehicle: {rental_car_rate}\n"
             f"* Scooter / Bike Rental: {rental_scooter_rate}\n"
             f"* Cabs & Transit: {taxi_guidance}\n\n"
             f"🏨 **Where to Stay Tonight:**\n"
@@ -202,13 +209,12 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
             f"✈️ **Available Return Flights ({dest} ➔ {dep_station}):**\n"
             f"{return_flights_text}\n\n"
             f"---\n\n"
-            f"### 💰 Budget & Cost Summary\n"
-            f"- **Estimated Flights Total**: {budget_result.allocated_flights.to_formatted_str()}\n"
-            f"- **Estimated Hotel Stay**: {budget_result.allocated_hotels.to_formatted_str()}\n"
-            f"- **Activities & Local Transit**: {budget_result.allocated_activities.to_formatted_str()}\n"
-            f"- **Committed Total**: **{budget_result.committed_total.to_formatted_str()}** ({budget_result.committed_total.to_words()})\n"
-            f"- **Remaining Balance**: **{budget_result.remaining_balance.to_formatted_str()}**\n\n"
-            f"*Note: All fares and hotel tariffs are indicative market estimates in Indian Rupees (₹ INR).*"
+            f"### 💰 Estimated Trip Cost Breakdown\n"
+            f"- **Roundtrip Flights (for {travelers})**: {budget_result.allocated_flights.to_formatted_str()}\n"
+            f"- **Accommodation**: {budget_result.allocated_hotels.to_formatted_str()}\n"
+            f"- **Airport Transfers & Local Transit**: {budget_result.allocated_activities.to_formatted_str()}\n"
+            f"- **Total Estimated Average Trip Cost**: **{budget_result.committed_total.to_formatted_str()}**\n\n"
+            f"*Note: All fares and tariffs are indicative average estimates in Indian Rupees (₹ INR).*"
         )
 
     verdict = evaluate_output_guardrail(draft)
