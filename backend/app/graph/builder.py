@@ -27,6 +27,7 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
     existing_state = {
         "departure_station": state.get("departure_station"),
         "destination": state.get("destination"),
+        "travelers_count": state.get("travelers_count"),
         "start_date": state.get("start_date"),
         "end_date": state.get("end_date"),
         "budget_inr": current_budget.amount if current_budget else None,
@@ -39,6 +40,8 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
         updates["departure_station"] = evaluation.departure_station
     if evaluation.destination:
         updates["destination"] = evaluation.destination
+    if evaluation.travelers_count:
+        updates["travelers_count"] = evaluation.travelers_count
     if evaluation.start_date:
         updates["start_date"] = evaluation.start_date
     if evaluation.end_date:

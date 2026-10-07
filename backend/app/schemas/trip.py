@@ -9,6 +9,7 @@ class TripCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     departure_station: str = Field(default="", max_length=255)
     destination: str = Field(default="", max_length=255)
+    travelers_count: int = Field(default=1, ge=1)
     start_date: date | None = None
     end_date: date | None = None
     budget_total: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
@@ -50,6 +51,7 @@ class ConversationIntakeResponse(BaseModel):
     trip_id: uuid.UUID
     departure_station: str
     destination: str
+    travelers_count: int = 1
     start_date: date | None
     end_date: date | None
     budget_amount: Decimal
@@ -60,6 +62,7 @@ class ConversationIntakeResponse(BaseModel):
 class ConversationIntakeUpdate(BaseModel):
     departure_station: str | None = None
     destination: str | None = None
+    travelers_count: int | None = None
     start_date: date | None = None
     end_date: date | None = None
     budget_amount: Decimal | None = None

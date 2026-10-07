@@ -22,6 +22,10 @@ class IntakeSupervisorEvaluation(BaseModel):
         default=None,
         description="Total duration of the trip in days (e.g. 3, 5).",
     )
+    travelers_count: int | None = Field(
+        default=None,
+        description="Total number of people traveling (e.g. 1 for solo/alone, 2 for couple/partner/friend, 4 for family/group). Defaults to 1 if user indicates solo/alone.",
+    )
     budget_inr: float | None = Field(
         default=None,
         description="Total estimated budget in Indian Rupees (INR).",

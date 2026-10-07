@@ -55,6 +55,7 @@ async def create_trip(
         user_id=user.id,
         departure_station=data.departure_station,
         destination=data.destination,
+        travelers_count=data.travelers_count,
         start_date=data.start_date,
         end_date=data.end_date,
         budget_amount=data.budget_total,
@@ -192,6 +193,7 @@ async def get_conversation_intake(
         trip_id=intake.trip_id,
         departure_station=intake.departure_station,
         destination=intake.destination,
+        travelers_count=intake.travelers_count,
         start_date=intake.start_date,
         end_date=intake.end_date,
         budget_amount=intake.budget_amount,
@@ -220,6 +222,8 @@ async def update_conversation_intake(
         intake.departure_station = update_data.departure_station
     if update_data.destination is not None:
         intake.destination = update_data.destination
+    if update_data.travelers_count is not None:
+        intake.travelers_count = update_data.travelers_count
     if update_data.start_date is not None:
         intake.start_date = update_data.start_date
     if update_data.end_date is not None:
@@ -254,6 +258,7 @@ async def update_conversation_intake(
         trip_id=intake.trip_id,
         departure_station=intake.departure_station,
         destination=intake.destination,
+        travelers_count=intake.travelers_count,
         start_date=intake.start_date,
         end_date=intake.end_date,
         budget_amount=intake.budget_amount,

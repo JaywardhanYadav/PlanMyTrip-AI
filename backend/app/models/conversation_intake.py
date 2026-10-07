@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
-from sqlalchemy import Date, ForeignKey, Numeric, String
+from sqlalchemy import Date, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -37,6 +37,11 @@ class ConversationIntake(UUIDBase, TimestampMixin):
     destination: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
+    )
+    travelers_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
     )
     start_date: Mapped[date | None] = mapped_column(
         Date,

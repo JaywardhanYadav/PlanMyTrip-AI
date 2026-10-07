@@ -50,6 +50,7 @@ async def chat_stream(
 
         intake_station = None
         intake_dest = None
+        intake_travelers = None
         intake_start = None
         intake_end = None
         intake_budget = None
@@ -71,6 +72,7 @@ async def chat_stream(
                         intake_row.budget_amount = user_budget.amount
                     intake_station = intake_row.departure_station if intake_row.departure_station and intake_row.departure_station not in ["", "Delhi (DEL)", "Pending"] else None
                     intake_dest = intake_row.destination if intake_row.destination and intake_row.destination not in ["", "Travel Destination", "Undecided"] else None
+                    intake_travelers = getattr(intake_row, "travelers_count", 1)
                     intake_start = str(intake_row.start_date) if intake_row.start_date else None
                     intake_end = str(intake_row.end_date) if intake_row.end_date else None
                     if intake_row.budget_amount and intake_row.budget_amount > 0:
@@ -127,6 +129,7 @@ async def chat_stream(
                 "messages": [HumanMessage(content=message)],
                 "departure_station": intake_station,
                 "destination": intake_dest,
+                "travelers_count": intake_travelers,
                 "start_date": intake_start,
                 "end_date": intake_end,
                 "user_name": user.name if user and user.name else "there",
@@ -183,6 +186,8 @@ async def chat_stream(
                                             intake_row.departure_station = eval_data.departure_station
                                         if eval_data.destination:
                                             intake_row.destination = eval_data.destination
+                                        if eval_data.travelers_count:
+                                            intake_row.travelers_count = eval_data.travelers_count
                                         if eval_data.start_date:
                                             try:
                                                 from datetime import date
@@ -222,6 +227,7 @@ async def chat_stream(
                                         "destination": eval_data.destination,
                                         "title": f"Trip to {eval_data.destination}",
                                         "departure_station": eval_data.departure_station,
+                                        "travelers_count": eval_data.travelers_count or intake_travelers,
                                         "start_date": eval_data.start_date,
                                         "end_date": eval_data.end_date,
                                         "is_complete": eval_data.is_complete,

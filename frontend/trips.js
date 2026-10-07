@@ -425,6 +425,8 @@ function openEditIntakeModal() {
   if (!currentIntakeData) return;
   document.getElementById("edit-intake-departure").value = currentIntakeData.departure_station || "";
   document.getElementById("edit-intake-destination").value = currentIntakeData.destination || "";
+  const travelersInput = document.getElementById("edit-intake-travelers");
+  if (travelersInput) travelersInput.value = currentIntakeData.travelers_count || 1;
   document.getElementById("edit-intake-start-date").value = currentIntakeData.start_date || "";
   document.getElementById("edit-intake-end-date").value = currentIntakeData.end_date || "";
   document.getElementById("edit-intake-budget").value = currentIntakeData.budget_amount ? `${currentIntakeData.budget_amount}` : "2 lakhs";
@@ -442,6 +444,8 @@ async function handleEditIntakeSubmit(e) {
   const token = localStorage.getItem("planmytrip_token");
   const departure_station = document.getElementById("edit-intake-departure").value.trim();
   const destination = document.getElementById("edit-intake-destination").value.trim();
+  const travelersInput = document.getElementById("edit-intake-travelers");
+  const travelers_count = travelersInput ? (parseInt(travelersInput.value, 10) || 1) : 1;
   const start_date = document.getElementById("edit-intake-start-date").value || null;
   const end_date = document.getElementById("edit-intake-end-date").value || null;
   const budget_amount = document.getElementById("edit-intake-budget").value.trim();
@@ -456,6 +460,7 @@ async function handleEditIntakeSubmit(e) {
       body: JSON.stringify({
         departure_station,
         destination,
+        travelers_count,
         start_date,
         end_date,
         budget_amount,

@@ -46,13 +46,14 @@ async def evaluate_trip_intake(
                 intent="chit_chat",
                 departure_station=existing_state.get("departure_station"),
                 destination=existing_state.get("destination"),
+                travelers_count=existing_state.get("travelers_count"),
                 duration_days=existing_state.get("duration_days"),
                 budget_inr=existing_state.get("budget_inr"),
                 start_date=existing_state.get("start_date"),
                 end_date=existing_state.get("end_date"),
                 relative_date_inferred=None,
                 is_date_confirmed=False,
-                missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
+                missing_fields=["departure_station", "destination", "travelers_count", "duration_days", "budget_inr", "start_date"],
                 is_complete=False,
                 next_question_or_confirmation=f"I'm doing wonderful, thank you for asking, {user_name}! I am PlanMyTrip AI, your personal travel planner. Where are you thinking of traveling next?",
             )
@@ -62,13 +63,14 @@ async def evaluate_trip_intake(
                 intent="chit_chat",
                 departure_station=existing_state.get("departure_station"),
                 destination=existing_state.get("destination"),
+                travelers_count=existing_state.get("travelers_count"),
                 duration_days=existing_state.get("duration_days"),
                 budget_inr=existing_state.get("budget_inr"),
                 start_date=existing_state.get("start_date"),
                 end_date=existing_state.get("end_date"),
                 relative_date_inferred=None,
                 is_date_confirmed=False,
-                missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
+                missing_fields=["departure_station", "destination", "travelers_count", "duration_days", "budget_inr", "start_date"],
                 is_complete=False,
                 next_question_or_confirmation=f"Hi {user_name}! {time_greeting}! I am PlanMyTrip AI, your personal travel planner. Where would you like to travel next?",
             )
@@ -90,6 +92,8 @@ async def evaluate_trip_intake(
         f"Current known state:\n"
         f"- Departure station: {existing_state.get('departure_station')}\n"
         f"- Destination: {existing_state.get('destination')}\n"
+        f"- Number of travelers: {existing_state.get('travelers_count')}\n"
+        f"- Duration (days): {existing_state.get('duration_days')}\n"
         f"- Start date: {existing_state.get('start_date')}\n"
         f"- End date: {existing_state.get('end_date')}\n"
         f"- Budget: {existing_state.get('budget_inr')}\n\n"
@@ -109,22 +113,24 @@ async def evaluate_trip_intake(
         f"     'Sorry {user_name}, I am unable to answer that as I can only plan trips. Do you have any destination or vacation in mind you would like to plan?'\n"
         f"   - Set is_complete=False.\n\n"
         f"3. INTENT = 'travel_planning':\n"
-        f"   - When the user discusses travel, destinations, flights, hotels, dates, budgets, or confirms an earlier question.\n"
-        f"   - Track the 5 mandatory travel details:\n"
+        f"   - When the user discusses travel, destinations, flights, hotels, dates, budgets, travelers count, or confirms an earlier question.\n"
+        f"   - Track the 6 mandatory travel details:\n"
         f"     1. departure_station (boarding / departure city)\n"
         f"     2. destination (vacation city/region)\n"
-        f"     3. duration_days (total days)\n"
-        f"     4. budget_inr (approximate total budget in INR ₹)\n"
-        f"     5. start_date (journey date, with user confirmation if relative)\n"
+        f"     3. travelers_count (number of people traveling, e.g. 1 for solo/alone, 2 for couple/partner/friend, 4 for family/group. Defaults to 1 if user indicates solo/alone)\n"
+        f"     4. duration_days (total days)\n"
+        f"     5. budget_inr (approximate total budget in INR ₹)\n"
+        f"     6. start_date (journey date, with user confirmation if relative)\n"
         f"   - RULES FOR RELATIVE DATES:\n"
         f"     * If user says 'next week' without a date, resolve start_date to {next_mon_iso}, set relative_date_inferred='Next week Monday ({next_mon_formatted})', set is_date_confirmed=False.\n"
         f"     * Explicitly confirm: 'I noticed you mentioned next week — should we schedule your departure for next Monday, {next_mon_formatted}?'\n"
         f"     * If user confirms an inferred date ('yes', 'sure', 'confirm', 'that works') or gives exact dates, set is_date_confirmed=True.\n"
-        f"   - QUESTIONING RULES:\n"
+        f"   - QUESTIONING RULES (NATURAL OPTION B CONVERSATION):\n"
         f"     * Acknowledge what was already provided with genuine enthusiasm (e.g. 'Goa sounds incredible!').\n"
         f"     * Never re-ask details that are already known.\n"
-        f"     * Ask for missing details in a natural, cohesive sentence.\n"
-        f"     * If all 5 fields are present AND date is confirmed: set is_complete=True, missing_fields=[], and next_question_or_confirmation=None.\n"
+        f"     * Naturally ask for missing details that haven't been provided yet, including group size / number of travelers (e.g. 'How many people will be traveling with you?').\n"
+        f"     * Combine questions naturally into 1 smooth, cohesive conversational sentence rather than an interrogation.\n"
+        f"     * If all 6 fields are present AND date is confirmed: set is_complete=True, missing_fields=[], and next_question_or_confirmation=None.\n"
         f"     * Always use Indian Rupees (INR, ₹) for pricing."
     )
 
@@ -153,13 +159,14 @@ async def evaluate_trip_intake(
             intent="chit_chat",
             departure_station=existing_state.get("departure_station"),
             destination=existing_state.get("destination"),
+            travelers_count=existing_state.get("travelers_count"),
             duration_days=existing_state.get("duration_days"),
             budget_inr=existing_state.get("budget_inr"),
             start_date=existing_state.get("start_date"),
             end_date=existing_state.get("end_date"),
             relative_date_inferred=None,
             is_date_confirmed=False,
-            missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
+            missing_fields=["departure_station", "destination", "travelers_count", "duration_days", "budget_inr", "start_date"],
             is_complete=False,
             next_question_or_confirmation=f"I'm doing wonderful, thank you for asking, {user_name}! I am PlanMyTrip AI, your personal travel planner. Where are you thinking of traveling next?",
         )
@@ -169,13 +176,14 @@ async def evaluate_trip_intake(
             intent="chit_chat",
             departure_station=existing_state.get("departure_station"),
             destination=existing_state.get("destination"),
+            travelers_count=existing_state.get("travelers_count"),
             duration_days=existing_state.get("duration_days"),
             budget_inr=existing_state.get("budget_inr"),
             start_date=existing_state.get("start_date"),
             end_date=existing_state.get("end_date"),
             relative_date_inferred=None,
             is_date_confirmed=False,
-            missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
+            missing_fields=["departure_station", "destination", "travelers_count", "duration_days", "budget_inr", "start_date"],
             is_complete=False,
             next_question_or_confirmation=f"Hi {user_name}! {time_greeting}! I am PlanMyTrip AI, your personal travel planner. Where would you like to travel next?",
         )
@@ -186,13 +194,14 @@ async def evaluate_trip_intake(
             intent="off_topic",
             departure_station=None,
             destination=None,
+            travelers_count=None,
             duration_days=None,
             budget_inr=None,
             start_date=None,
             end_date=None,
             relative_date_inferred=None,
             is_date_confirmed=False,
-            missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
+            missing_fields=["departure_station", "destination", "travelers_count", "duration_days", "budget_inr", "start_date"],
             is_complete=False,
             next_question_or_confirmation=f"Sorry {user_name}, I am unable to answer that as I can only plan trips. Do you have any destination or vacation in mind you would like to plan?",
         )
