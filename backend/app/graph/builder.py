@@ -6,6 +6,7 @@ from ..agents.flight_agent import flight_agent_node
 from ..agents.hotel_agent import hotel_agent_node
 from ..agents.intake_agent import evaluate_trip_intake
 from ..agents.itinerary_agent import itinerary_agent_node
+from ..agents.places_agent import places_agent_node
 from ..agents.supervisor import supervisor_node
 from ..agents.synthesis_agent import synthesis_agent_node
 from ..core.money import Money
@@ -62,6 +63,7 @@ def build_trip_graph(checkpointer: Any = None) -> Any:
     builder.add_node("intake_supervisor", intake_supervisor_node)
     builder.add_node("flight_agent", flight_agent_node)
     builder.add_node("hotel_agent", hotel_agent_node)
+    builder.add_node("places_agent", places_agent_node)
     builder.add_node("itinerary_agent", itinerary_agent_node)
     builder.add_node("supervisor", supervisor_node)
     builder.add_node("synthesis_agent", synthesis_agent_node)
@@ -72,6 +74,7 @@ def build_trip_graph(checkpointer: Any = None) -> Any:
 
     builder.add_edge("flight_agent", "supervisor")
     builder.add_edge("hotel_agent", "supervisor")
+    builder.add_edge("places_agent", "supervisor")
     builder.add_edge("itinerary_agent", "supervisor")
 
     builder.add_conditional_edges("supervisor", route_supervisor)
@@ -79,5 +82,4 @@ def build_trip_graph(checkpointer: Any = None) -> Any:
 
     return builder.compile(
         checkpointer=checkpointer,
-        interrupt_before=["synthesis_agent"],
     )

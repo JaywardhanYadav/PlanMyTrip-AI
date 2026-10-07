@@ -330,6 +330,11 @@ class PlanMyTripState(TypedDict, total=False):
         keyed_option_merge,
     ]
 
+    return_flight_options: Annotated[
+        list[FlightOption],
+        keyed_option_merge,
+    ]
+
     hotel_options: Annotated[
         list[HotelOption],
         keyed_option_merge,
@@ -339,6 +344,8 @@ class PlanMyTripState(TypedDict, total=False):
         list[ActivityOption],
         keyed_option_merge,
     ]
+
+    places_data: dict[str, object] | None
 
     weather_outlook: Annotated[
         list[WeatherOutlook],

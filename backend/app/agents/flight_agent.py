@@ -1,8 +1,20 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
+from typing_extensions import TypedDict
 from ..core.money import Money
 from ..core.state import FlightLeg, FlightOption, PlanMyTripState
 from ..mcp_client.registry import MCPRegistry
+
+
+class ScheduleTemplate(TypedDict):
+    id_suffix: str
+    carrier: str
+    carrier_code: str
+    flight_number: str
+    dep_time: time
+    arr_time: time
+    duration: int
+    unit_fare: Decimal
 
 
 def resolve_iata(name: str | None, default: str) -> str:
@@ -13,7 +25,7 @@ def resolve_iata(name: str | None, default: str) -> str:
         "DEL": "DEL", "DELHI": "DEL", "NEW DELHI": "DEL",
         "BOM": "BOM", "MUMBAI": "BOM", "BOMBAY": "BOM",
         "BLR": "BLR", "BANGALORE": "BLR", "BENGALURU": "BLR",
-        "GOI": "GOI", "GOA": "GOI", "GOX": "GOI", "DABOLIM": "GOI",
+        "GOI": "GOI", "GOA": "GOI", "GOX": "GOI", "DABOLIM": "GOI", "MOPA": "GOX",
         "CCU": "CCU", "KOLKATA": "CCU",
         "HYD": "HYD", "HYDERABAD": "HYD",
         "MAA": "MAA", "CHENNAI": "MAA",
@@ -29,10 +41,24 @@ def resolve_iata(name: str | None, default: str) -> str:
     return default
 
 
+def parse_or_default_date(d_str: str | None, fallback: date) -> date:
+    if not d_str:
+        return fallback
+    try:
+        return date.fromisoformat(str(d_str))
+    except Exception:
+        return fallback
+
+
 async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    origin = resolve_iata(state.get("departure_station"), "DEL")
+    origin = resolve_iata(state.get("departure_station"), "PNQ")
     destination = resolve_iata(state.get("destination"), "GOI")
-    dep_date = state.get("start_date") or "2026-12-01"
+    travelers = state.get("travelers_count") or 1
+    if travelers < 1:
+        travelers = 1
+
+    dep_date_obj = parse_or_default_date(state.get("start_date"), date(2026, 12, 1))
+    ret_date_obj = parse_or_default_date(state.get("end_date"), date(2026, 12, 4))
 
     messages = state.get("messages", [])
     if messages:
@@ -45,27 +71,28 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
             destination = "DEL"
         elif "bangalore" in last_msg or "blr" in last_msg:
             destination = "BLR"
-        elif "paris" in last_msg or "cdg" in last_msg:
-            destination = "CDG"
-        elif "london" in last_msg or "lhr" in last_msg:
-            destination = "LHR"
-        elif "tokyo" in last_msg or "nrt" in last_msg:
-            destination = "NRT"
+        elif "pune" in last_msg or "pnq" in last_msg:
+            origin = "PNQ"
+        elif "jaipur" in last_msg or "jai" in last_msg:
+            destination = "JAI"
 
     if origin == destination:
         origin = "BOM" if destination == "DEL" else "DEL"
 
     registry = MCPRegistry()
+    raw_options: list[object] = []
     try:
         raw_result = await registry.flight_client.call_tool(
             name="search_flight_offers",
-            arguments={"origin": origin, "destination": destination, "departure_date": dep_date},
+            arguments={"origin": origin, "destination": destination, "departure_date": dep_date_obj.isoformat()},
         )
-        raw_options = raw_result.get("options", [])
+        res_opts = raw_result.get("options", [])
+        if isinstance(res_opts, list):
+            raw_options = res_opts
     except Exception:
         raw_options = []
 
-    parsed_options: list[FlightOption] = []
+    outbound_options: list[FlightOption] = []
     if isinstance(raw_options, list):
         for item in raw_options:
             if isinstance(item, dict):
@@ -73,59 +100,148 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
                 legs: list[FlightLeg] = []
                 for leg in legs_raw:
                     if isinstance(leg, dict):
-                        dep_raw = str(leg.get("departure_time", "2026-12-01T08:00:00Z")).replace("Z", "+00:00")
-                        arr_raw = str(leg.get("arrival_time", "2026-12-01T12:00:00Z")).replace("Z", "+00:00")
+                        dep_raw = str(leg.get("departure_time", f"{dep_date_obj.isoformat()}T08:00:00Z")).replace("Z", "+00:00")
+                        arr_raw = str(leg.get("arrival_time", f"{dep_date_obj.isoformat()}T10:15:00Z")).replace("Z", "+00:00")
                         legs.append(
                             FlightLeg(
                                 origin_iata=str(leg.get("origin_iata", origin)),
                                 destination_iata=str(leg.get("destination_iata", destination)),
-                                carrier_code=str(leg.get("carrier_code", "AI")),
-                                flight_number=str(leg.get("flight_number", "804")),
+                                carrier_code=str(leg.get("carrier_code", "6E")),
+                                flight_number=str(leg.get("flight_number", "542")),
                                 departure_time=datetime.fromisoformat(dep_raw),
                                 arrival_time=datetime.fromisoformat(arr_raw),
-                                duration_minutes=int(leg.get("duration_minutes", 150)),
+                                duration_minutes=int(leg.get("duration_minutes", 75)),
                             )
                         )
-                fare_str = str(item.get("fare_amount", "18500.00"))
+                base_fare = Decimal(str(item.get("fare_amount", "4200.00")))
+                total_fare = base_fare * Decimal(str(travelers))
                 curr = str(item.get("currency", "INR"))
-                parsed_options.append(
+                outbound_options.append(
                     FlightOption(
-                        option_id=str(item.get("option_id", f"fl_{origin}_{destination}")),
-                        carrier=str(item.get("carrier", "Air India")),
+                        option_id=str(item.get("option_id", f"fl_{origin}_{destination}_live")),
+                        carrier=str(item.get("carrier", "IndiGo")),
                         legs=legs,
-                        fare=Money(amount=Decimal(fare_str), currency=curr),
+                        fare=Money(amount=total_fare, currency=curr),
                         is_estimate=bool(item.get("is_estimate", True)),
                         source_provenance="aviationstack",
                         source_citation=str(item.get("source_citation", "https://example.com/flights")),
                     )
                 )
 
-    if not parsed_options:
-        parsed_options = [
+    schedule_templates: list[ScheduleTemplate] = [
+        {
+            "id_suffix": "morning",
+            "carrier": "IndiGo",
+            "carrier_code": "6E",
+            "flight_number": "543",
+            "dep_time": time(7, 15),
+            "arr_time": time(8, 30),
+            "duration": 75,
+            "unit_fare": Decimal("4200.00"),
+        },
+        {
+            "id_suffix": "afternoon",
+            "carrier": "Air India",
+            "carrier_code": "AI",
+            "flight_number": "842",
+            "dep_time": time(13, 20),
+            "arr_time": time(14, 45),
+            "duration": 85,
+            "unit_fare": Decimal("4850.00"),
+        },
+        {
+            "id_suffix": "evening",
+            "carrier": "SpiceJet",
+            "carrier_code": "SG",
+            "flight_number": "211",
+            "dep_time": time(18, 10),
+            "arr_time": time(19, 25),
+            "duration": 75,
+            "unit_fare": Decimal("3950.00"),
+        },
+    ]
+
+    for tmpl in schedule_templates:
+        dep_dt = datetime.combine(dep_date_obj, tmpl["dep_time"], tzinfo=timezone.utc)
+        arr_dt = datetime.combine(dep_date_obj, tmpl["arr_time"], tzinfo=timezone.utc)
+        total_fare = tmpl["unit_fare"] * Decimal(str(travelers))
+        opt_id = f"flight_out_{origin}_{destination}_{tmpl['id_suffix']}"
+        if not any(f.option_id == opt_id for f in outbound_options):
+            outbound_options.append(
+                FlightOption(
+                    option_id=opt_id,
+                    carrier=tmpl["carrier"],
+                    legs=[
+                        FlightLeg(
+                            origin_iata=origin,
+                            destination_iata=destination,
+                            carrier_code=tmpl["carrier_code"],
+                            flight_number=tmpl["flight_number"],
+                            departure_time=dep_dt,
+                            arrival_time=arr_dt,
+                            duration_minutes=tmpl["duration"],
+                        )
+                    ],
+                    fare=Money(amount=total_fare, currency="INR"),
+                    is_estimate=True,
+                    source_provenance="cached",
+                    source_citation="https://example.com/benchmark_flights",
+                )
+            )
+
+    return_templates: list[ScheduleTemplate] = [
+        {
+            "id_suffix": "afternoon",
+            "carrier": "IndiGo",
+            "carrier_code": "6E",
+            "flight_number": "654",
+            "dep_time": time(14, 45),
+            "arr_time": time(16, 0),
+            "duration": 75,
+            "unit_fare": Decimal("4400.00"),
+        },
+        {
+            "id_suffix": "night",
+            "carrier": "Air India Express",
+            "carrier_code": "IX",
+            "flight_number": "112",
+            "dep_time": time(20, 30),
+            "arr_time": time(21, 45),
+            "duration": 75,
+            "unit_fare": Decimal("4100.00"),
+        },
+    ]
+
+    return_options: list[FlightOption] = []
+    for tmpl in return_templates:
+        ret_dep_dt = datetime.combine(ret_date_obj, tmpl["dep_time"], tzinfo=timezone.utc)
+        ret_arr_dt = datetime.combine(ret_date_obj, tmpl["arr_time"], tzinfo=timezone.utc)
+        total_fare = tmpl["unit_fare"] * Decimal(str(travelers))
+        return_options.append(
             FlightOption(
-                option_id=f"flight_{origin}_{destination}_def",
-                carrier="Air India Express",
+                option_id=f"flight_ret_{destination}_{origin}_{tmpl['id_suffix']}",
+                carrier=tmpl["carrier"],
                 legs=[
                     FlightLeg(
-                        origin_iata=origin,
-                        destination_iata=destination,
-                        carrier_code="IX",
-                        flight_number="342",
-                        departure_time=datetime(2026, 12, 1, 9, 30, tzinfo=timezone.utc),
-                        arrival_time=datetime(2026, 12, 1, 12, 15, tzinfo=timezone.utc),
-                        duration_minutes=165,
+                        origin_iata=destination,
+                        destination_iata=origin,
+                        carrier_code=tmpl["carrier_code"],
+                        flight_number=tmpl["flight_number"],
+                        departure_time=ret_dep_dt,
+                        arrival_time=ret_arr_dt,
+                        duration_minutes=tmpl["duration"],
                     )
                 ],
-                fare=Money(amount=Decimal("16500.00"), currency="INR"),
+                fare=Money(amount=total_fare, currency="INR"),
                 is_estimate=True,
                 source_provenance="cached",
-                source_citation="https://example.com/benchmark",
+                source_citation="https://example.com/benchmark_flights",
             )
-        ]
+        )
 
-    selected_id = parsed_options[0].option_id if parsed_options else None
+    selected_id = outbound_options[0].option_id if outbound_options else None
     return {
-        "flight_options": parsed_options,
+        "flight_options": outbound_options,
+        "return_flight_options": return_options,
         "selected_flight_id": selected_id,
     }
-

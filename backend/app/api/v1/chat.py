@@ -244,7 +244,7 @@ async def chat_stream(
                                     "event": "status",
                                     "data": json.dumps({"step": "intake_complete", "message": "All trip parameters confirmed! Researching flights, stays, and activities..."}),
                                 }
-                    elif node_name in ["flight_agent", "hotel_agent", "itinerary_agent"]:
+                    elif node_name in ["flight_agent", "hotel_agent", "places_agent", "itinerary_agent"]:
                         serialized: dict[str, object] = {}
                         for k, v in node_update.items():
                             if isinstance(v, list):
