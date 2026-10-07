@@ -23,16 +23,12 @@ async function sendChatMessage() {
   appendUserMessage(message);
 
   const token = localStorage.getItem("planmytrip_token");
-  const agentMessageDiv = appendAgentMessage("Planning your trip with multi-agent orchestration...");
-
-  updateAgentStatus("flight", "Searching flight routes...", "60%");
-  updateAgentStatus("hotel", "Scanning top properties...", "40%");
-  updateAgentStatus("itinerary", "Analyzing preferences...", "30%");
+  const agentMessageDiv = appendAgentMessage("Thinking...");
 
   let threadIdToUse = activeThreadId;
   if (!threadIdToUse) {
     try {
-      let inferredDest = "Travel Destination";
+      let inferredDest = "";
       const lower = message.toLowerCase();
       if (lower.includes("goa")) inferredDest = "Goa";
       else if (lower.includes("japan") || lower.includes("tokyo")) inferredDest = "Japan";
@@ -49,7 +45,7 @@ async function sendChatMessage() {
         }
       }
 
-      const tripTitle = inferredDest !== "Travel Destination" ? `Trip to ${inferredDest}` : (message.substring(0, 24) + (message.length > 24 ? "..." : ""));
+      const tripTitle = inferredDest ? `Trip to ${inferredDest}` : "Trip Plan";
 
       const initRes = await fetch(`${API_BASE}/trips`, {
         method: "POST",
@@ -60,8 +56,8 @@ async function sendChatMessage() {
         body: JSON.stringify({
           title: tripTitle,
           destination: inferredDest,
-          departure_station: "Delhi (DEL)",
-          budget_total: "2 lakhs",
+          departure_station: "",
+          budget_total: "0",
           currency: "INR"
         })
       });
@@ -70,7 +66,7 @@ async function sendChatMessage() {
         activeTripId = newTrip.id;
         activeThreadId = newTrip.thread_id;
         threadIdToUse = newTrip.thread_id;
-        await loadTrips();
+        loadTrips().catch(console.error);
       }
     } catch (e) {
       console.error(e);
@@ -104,18 +100,35 @@ async function sendChatMessage() {
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n\n");
-      buffer = lines.pop() || "";
+      const blocks = buffer.split(/\r?\n\r?\n/);
+      buffer = blocks.pop() || "";
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const eventMatch = line.match(/^event:\s*(.+)$/m);
-        const dataMatch = line.match(/^data:\s*(.+)$/m);
+      for (const block of blocks) {
+        if (!block.trim()) continue;
+        const eventMatch = block.match(/^event:\s*(.+)$/m);
+        const dataMatch = block.match(/^data:\s*([\s\S]+)$/m);
 
         if (eventMatch && dataMatch) {
           const eventType = eventMatch[1].trim();
+          try {
+            const eventData = JSON.parse(dataMatch[1].trim());
+            handleSSEEvent(eventType, eventData, agentMessageDiv);
+          } catch (parseErr) {
+            console.error(parseErr);
+          }
+        }
+      }
+    }
+
+    if (buffer.trim()) {
+      const eventMatch = buffer.match(/^event:\s*(.+)$/m);
+      const dataMatch = buffer.match(/^data:\s*([\s\S]+)$/m);
+      if (eventMatch && dataMatch) {
+        try {
           const eventData = JSON.parse(dataMatch[1].trim());
-          handleSSEEvent(eventType, eventData, agentMessageDiv);
+          handleSSEEvent(eventMatch[1].trim(), eventData, agentMessageDiv);
+        } catch (parseErr) {
+          console.error(parseErr);
         }
       }
     }
@@ -163,7 +176,9 @@ function updateAgentStatus(agent, subtitle, percent) {
 
 function handleSSEEvent(type, data, messageDiv) {
   if (type === "status") {
-    messageDiv.innerText = `⏳ ${data.message}`;
+    if (data.message && data.step !== "planning_started") {
+      messageDiv.innerText = `⏳ ${data.message}`;
+    }
   } else if (type === "guardrail") {
     if (!data.allowed) {
       messageDiv.innerHTML = `<span style="color: var(--accent-danger);">⚠️ Request Rejected: ${escapeHtml(data.reason)}</span>`;

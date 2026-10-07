@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage
 from sqlalchemy import select
 from sse_starlette.sse import EventSourceResponse
 
+from ...agents.intake_agent import get_time_of_day_greeting
 from ...core.database import async_session_factory, create_checkpointer_pool, setup_checkpointer
 from ...core.money import Money, parse_indian_budget_decimal
 from ...graph.builder import build_trip_graph
@@ -29,6 +30,58 @@ async def chat_stream(
     trip_id = getattr(_thread, "trip_id", None)
 
     async def event_generator() -> AsyncGenerator[dict[str, str], None]:
+        user_display = user.name if user and user.name else "there"
+        clean_msg = message.strip().lower()
+        is_how_are_you = any(q in clean_msg for q in ["how are you", "how are u", "how r u", "how's it going", "how is it going"])
+        is_greeting = clean_msg in [
+            "hi", "hello", "hey", "hlo", "hola", "namaste", "good morning", "good evening", "good afternoon"
+        ] or (len(clean_msg) <= 4 and clean_msg.isalpha())
+
+        if is_how_are_you or is_greeting:
+            if is_how_are_you:
+                reply_draft = f"I'm doing wonderful, thank you for asking, {user_display}! I am PlanMyTrip AI, your personal travel planner. Where are you thinking of traveling next?"
+            else:
+                time_greeting = get_time_of_day_greeting()
+                reply_draft = f"Hi {user_display}! {time_greeting}! I am PlanMyTrip AI, your personal travel planner. Where would you like to travel next?"
+
+            if trip_id:
+                async with async_session_factory() as db_session:
+                    user_msg = ChatMessage(
+                        trip_id=trip_id,
+                        user_id=user.id,
+                        role="user",
+                        content=message,
+                    )
+                    asst_msg = ChatMessage(
+                        trip_id=trip_id,
+                        user_id=user.id,
+                        role="assistant",
+                        content=reply_draft,
+                    )
+                    db_session.add(user_msg)
+                    db_session.add(asst_msg)
+                    await db_session.commit()
+
+            yield {
+                "event": "guardrail",
+                "data": json.dumps({
+                    "allowed": True,
+                    "category": "clean",
+                    "confidence": 1.0,
+                    "reason": "Conversational greeting allowed instantaneously.",
+                    "is_retryable": True,
+                }),
+            }
+            yield {
+                "event": "synthesis",
+                "data": json.dumps({"draft": reply_draft}),
+            }
+            yield {
+                "event": "done",
+                "data": json.dumps({"status": "completed"}),
+            }
+            return
+
         msg_lower = message.lower()
         budget_keywords = ["lakh", "lac", "cr", "crore", "thousand", "k", "budget", "inr", "₹", "rs"]
         user_budget = None
@@ -58,11 +111,11 @@ async def chat_stream(
                 if intake_row:
                     if user_budget:
                         intake_row.budget_amount = user_budget.amount
-                    intake_station = intake_row.departure_station
-                    intake_dest = intake_row.destination
+                    intake_station = intake_row.departure_station if intake_row.departure_station and intake_row.departure_station not in ["", "Delhi (DEL)", "Pending"] else None
+                    intake_dest = intake_row.destination if intake_row.destination and intake_row.destination not in ["", "Travel Destination", "Undecided"] else None
                     intake_start = str(intake_row.start_date) if intake_row.start_date else None
                     intake_end = str(intake_row.end_date) if intake_row.end_date else None
-                    if intake_row.budget_amount:
+                    if intake_row.budget_amount and intake_row.budget_amount > 0:
                         intake_budget = Money(amount=intake_row.budget_amount, currency=intake_row.currency or "INR")
                 await db_session.commit()
 
@@ -80,6 +133,7 @@ async def chat_stream(
                 "destination": intake_dest,
                 "start_date": intake_start,
                 "end_date": intake_end,
+                "user_name": user.name if user and user.name else "there",
             }
             if user_budget:
                 initial_input["trip_budget"] = user_budget
@@ -104,6 +158,22 @@ async def chat_stream(
                                 "event": "guardrail",
                                 "data": json.dumps(dumped, default=str),
                             }
+                            if not verdict.allowed:
+                                polite_msg = f"Sorry {user.name or 'there'}, I'm unable to answer that as I can only plan trips. Do you have any destination or vacation in mind you'd like to plan?"
+                                if trip_id:
+                                    async with async_session_factory() as db_session:
+                                        asst_msg = ChatMessage(
+                                            trip_id=trip_id,
+                                            user_id=user.id,
+                                            role="assistant",
+                                            content=polite_msg,
+                                        )
+                                        db_session.add(asst_msg)
+                                        await db_session.commit()
+                                yield {
+                                    "event": "synthesis",
+                                    "data": json.dumps({"draft": polite_msg}, default=str),
+                                }
                     elif node_name == "intake_supervisor":
                         eval_data = node_update.get("intake_evaluation")
                         if eval_data:

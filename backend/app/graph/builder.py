@@ -29,7 +29,8 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
         "end_date": state.get("end_date"),
         "budget_inr": state.get("trip_budget").amount if state.get("trip_budget") else None,
     }
-    evaluation = await evaluate_trip_intake(messages, existing_state)
+    user_name = state.get("user_name") or "there"
+    evaluation = await evaluate_trip_intake(messages, existing_state, user_name=user_name)
 
     updates: dict[str, object] = {"intake_evaluation": evaluation}
     if evaluation.departure_station:

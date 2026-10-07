@@ -1,10 +1,15 @@
 from decimal import Decimal
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class IntakeSupervisorEvaluation(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    intent: Literal["chit_chat", "off_topic", "travel_planning"] = Field(
+        default="travel_planning",
+        description="Classified user intent: chit_chat for greetings and pleasantries, off_topic for non-travel queries, travel_planning for vacations.",
+    )
     departure_station: str | None = Field(
         default=None,
         description="Boarding or departure city (e.g. 'Mumbai', 'Delhi').",

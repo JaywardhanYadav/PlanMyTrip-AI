@@ -298,10 +298,9 @@ class GuardrailVerdict(BaseModel):
         "pii",
     ]
 
-    confidence: Decimal = Field(
-        ge=Decimal("0.0"),
-        le=Decimal("1.0"),
-        decimal_places=2,
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
         description="Confidence score between 0.00 and 1.00.",
     )
 
@@ -359,5 +358,6 @@ class PlanMyTripState(TypedDict, total=False):
     human_feedback: dict[str, object] | None
     next_step: str | None
     intake_evaluation: IntakeSupervisorEvaluation | None
+    user_name: str | None
 
 
