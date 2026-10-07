@@ -33,54 +33,12 @@ async def chat_stream(
         user_display = user.name if user and user.name else "there"
         clean_msg = message.strip().lower()
         is_how_are_you = any(q in clean_msg for q in ["how are you", "how are u", "how r u", "how's it going", "how is it going"])
-        is_greeting = clean_msg in [
-            "hi", "hello", "hey", "hlo", "hola", "namaste", "good morning", "good evening", "good afternoon"
-        ] or (len(clean_msg) <= 4 and clean_msg.isalpha())
-
-        if is_how_are_you or is_greeting:
-            if is_how_are_you:
-                reply_draft = f"I'm doing wonderful, thank you for asking, {user_display}! I am PlanMyTrip AI, your personal travel planner. Where are you thinking of traveling next?"
-            else:
-                time_greeting = get_time_of_day_greeting()
-                reply_draft = f"Hi {user_display}! {time_greeting}! I am PlanMyTrip AI, your personal travel planner. Where would you like to travel next?"
-
-            if trip_id:
-                async with async_session_factory() as db_session:
-                    user_msg = ChatMessage(
-                        trip_id=trip_id,
-                        user_id=user.id,
-                        role="user",
-                        content=message,
-                    )
-                    asst_msg = ChatMessage(
-                        trip_id=trip_id,
-                        user_id=user.id,
-                        role="assistant",
-                        content=reply_draft,
-                    )
-                    db_session.add(user_msg)
-                    db_session.add(asst_msg)
-                    await db_session.commit()
-
-            yield {
-                "event": "guardrail",
-                "data": json.dumps({
-                    "allowed": True,
-                    "category": "clean",
-                    "confidence": 1.0,
-                    "reason": "Conversational greeting allowed instantaneously.",
-                    "is_retryable": True,
-                }),
-            }
-            yield {
-                "event": "synthesis",
-                "data": json.dumps({"draft": reply_draft}),
-            }
-            yield {
-                "event": "done",
-                "data": json.dumps({"status": "completed"}),
-            }
-            return
+        greetings_set = {
+            "hi", "hello", "hey", "hlo", "hola", "namaste",
+            "good morning", "good afternoon", "good evening", "good night",
+            "hey there", "hello there", "hi there"
+        }
+        is_pure_greeting = clean_msg in greetings_set
 
         msg_lower = message.lower()
         budget_keywords = ["lakh", "lac", "cr", "crore", "thousand", "k", "budget", "inr", "₹", "rs"]
@@ -118,6 +76,44 @@ async def chat_stream(
                     if intake_row.budget_amount and intake_row.budget_amount > 0:
                         intake_budget = Money(amount=intake_row.budget_amount, currency=intake_row.currency or "INR")
                 await db_session.commit()
+
+        if (is_how_are_you or is_pure_greeting) and not intake_dest:
+            if is_how_are_you:
+                reply_draft = f"I'm doing wonderful, thank you for asking, {user_display}! I am PlanMyTrip AI, your personal travel planner. Where are you thinking of traveling next?"
+            else:
+                time_greeting = get_time_of_day_greeting()
+                reply_draft = f"Hi {user_display}! {time_greeting}! I am PlanMyTrip AI, your personal travel planner. Where would you like to travel next?"
+
+            if trip_id:
+                async with async_session_factory() as db_session:
+                    asst_msg = ChatMessage(
+                        trip_id=trip_id,
+                        user_id=user.id,
+                        role="assistant",
+                        content=reply_draft,
+                    )
+                    db_session.add(asst_msg)
+                    await db_session.commit()
+
+            yield {
+                "event": "guardrail",
+                "data": json.dumps({
+                    "allowed": True,
+                    "category": "clean",
+                    "confidence": 1.0,
+                    "reason": "Conversational greeting allowed instantaneously.",
+                    "is_retryable": True,
+                }),
+            }
+            yield {
+                "event": "synthesis",
+                "data": json.dumps({"draft": reply_draft}),
+            }
+            yield {
+                "event": "done",
+                "data": json.dumps({"status": "completed"}),
+            }
+            return
 
         pool = create_checkpointer_pool()
         await pool.open()

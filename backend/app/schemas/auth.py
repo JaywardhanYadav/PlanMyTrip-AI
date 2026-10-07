@@ -22,7 +22,9 @@ class UserCreate(BaseModel):
                 return date.fromisoformat(value)
             except Exception:
                 return None
-        return value
+        if isinstance(value, date):
+            return value
+        return None
 
 
 class UserLogin(BaseModel):

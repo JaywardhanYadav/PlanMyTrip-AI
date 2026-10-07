@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 from langgraph.graph import END
 from ..core.state import PlanMyTripState
 
@@ -10,7 +10,7 @@ def route_guardrail(state: PlanMyTripState) -> str:
     return "intake_supervisor"
 
 
-def route_intake(state: PlanMyTripState) -> list[str] | str:
+def route_intake(state: PlanMyTripState) -> Any:
     evaluation = state.get("intake_evaluation")
     if not evaluation or not evaluation.is_complete:
         return END

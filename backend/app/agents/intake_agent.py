@@ -38,38 +38,40 @@ async def evaluate_trip_intake(
 
     latest_content = str(messages[-1].content).strip() if messages else ""
     latest_lower = latest_content.lower()
+    has_existing_plan = bool(existing_state.get("destination"))
 
-    if any(q in latest_lower for q in ["how are you", "how are u", "how r u", "how's it going", "how is it going"]):
-        return IntakeSupervisorEvaluation(
-            intent="chit_chat",
-            departure_station=existing_state.get("departure_station"),
-            destination=existing_state.get("destination"),
-            duration_days=existing_state.get("duration_days"),
-            budget_inr=existing_state.get("budget_inr"),
-            start_date=existing_state.get("start_date"),
-            end_date=existing_state.get("end_date"),
-            relative_date_inferred=None,
-            is_date_confirmed=False,
-            missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
-            is_complete=False,
-            next_question_or_confirmation=f"I'm doing wonderful, thank you for asking, {user_name}! I am PlanMyTrip AI, your personal travel planner. Where are you thinking of traveling next?",
-        )
+    if not has_existing_plan:
+        if any(q in latest_lower for q in ["how are you", "how are u", "how r u", "how's it going", "how is it going"]):
+            return IntakeSupervisorEvaluation(
+                intent="chit_chat",
+                departure_station=existing_state.get("departure_station"),
+                destination=existing_state.get("destination"),
+                duration_days=existing_state.get("duration_days"),
+                budget_inr=existing_state.get("budget_inr"),
+                start_date=existing_state.get("start_date"),
+                end_date=existing_state.get("end_date"),
+                relative_date_inferred=None,
+                is_date_confirmed=False,
+                missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
+                is_complete=False,
+                next_question_or_confirmation=f"I'm doing wonderful, thank you for asking, {user_name}! I am PlanMyTrip AI, your personal travel planner. Where are you thinking of traveling next?",
+            )
 
-    if latest_lower in ["hi", "hello", "hey", "hlo", "hola", "namaste", "good morning", "good evening", "good afternoon"]:
-        return IntakeSupervisorEvaluation(
-            intent="chit_chat",
-            departure_station=existing_state.get("departure_station"),
-            destination=existing_state.get("destination"),
-            duration_days=existing_state.get("duration_days"),
-            budget_inr=existing_state.get("budget_inr"),
-            start_date=existing_state.get("start_date"),
-            end_date=existing_state.get("end_date"),
-            relative_date_inferred=None,
-            is_date_confirmed=False,
-            missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
-            is_complete=False,
-            next_question_or_confirmation=f"Hi {user_name}! {time_greeting}! I am PlanMyTrip AI, your personal travel planner. Where would you like to travel next?",
-        )
+        if latest_lower in ["hi", "hello", "hey", "hlo", "hola", "namaste", "good morning", "good evening", "good afternoon"]:
+            return IntakeSupervisorEvaluation(
+                intent="chit_chat",
+                departure_station=existing_state.get("departure_station"),
+                destination=existing_state.get("destination"),
+                duration_days=existing_state.get("duration_days"),
+                budget_inr=existing_state.get("budget_inr"),
+                start_date=existing_state.get("start_date"),
+                end_date=existing_state.get("end_date"),
+                relative_date_inferred=None,
+                is_date_confirmed=False,
+                missing_fields=["departure_station", "destination", "duration_days", "budget_inr", "start_date"],
+                is_complete=False,
+                next_question_or_confirmation=f"Hi {user_name}! {time_greeting}! I am PlanMyTrip AI, your personal travel planner. Where would you like to travel next?",
+            )
 
     client = get_openai_client()
     settings = get_settings()

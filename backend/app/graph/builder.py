@@ -1,5 +1,6 @@
+from decimal import Decimal
+from typing import Any
 from langchain_core.messages import AIMessage
-from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from ..agents.flight_agent import flight_agent_node
 from ..agents.hotel_agent import hotel_agent_node
@@ -22,12 +23,13 @@ async def input_guard_node(state: PlanMyTripState) -> dict[str, object]:
 
 async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
     messages = state.get("messages", [])
+    current_budget = state.get("trip_budget")
     existing_state = {
         "departure_station": state.get("departure_station"),
         "destination": state.get("destination"),
         "start_date": state.get("start_date"),
         "end_date": state.get("end_date"),
-        "budget_inr": state.get("trip_budget").amount if state.get("trip_budget") else None,
+        "budget_inr": current_budget.amount if current_budget else None,
     }
     user_name = state.get("user_name") or "there"
     evaluation = await evaluate_trip_intake(messages, existing_state, user_name=user_name)
@@ -41,8 +43,8 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
         updates["start_date"] = evaluation.start_date
     if evaluation.end_date:
         updates["end_date"] = evaluation.end_date
-    if evaluation.budget_inr:
-        updates["trip_budget"] = Money(amount=evaluation.budget_inr, currency="INR")
+    if evaluation.budget_inr is not None:
+        updates["trip_budget"] = Money(amount=Decimal(str(evaluation.budget_inr)), currency="INR")
 
     if not evaluation.is_complete and evaluation.next_question_or_confirmation:
         updates["messages"] = [AIMessage(content=evaluation.next_question_or_confirmation)]
@@ -50,7 +52,7 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
     return updates
 
 
-def build_trip_graph(checkpointer: BaseCheckpointSaver | None = None) -> object:
+def build_trip_graph(checkpointer: Any = None) -> Any:
     builder = StateGraph(PlanMyTripState)
 
     builder.add_node("input_guard", input_guard_node)
