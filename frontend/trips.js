@@ -1,4 +1,4 @@
-const API_BASE = (window.location && window.location.origin && window.location.origin.startsWith("http"))
+var API_BASE = (window.location && window.location.origin && window.location.origin.startsWith("http"))
   ? `${window.location.origin}/api/v1`
   : "http://localhost:8000/api/v1";
 window.API_BASE = API_BASE;
