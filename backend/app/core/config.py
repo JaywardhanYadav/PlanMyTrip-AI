@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
 
     JWT_EXPIRE_MINUTES: int = Field(
-        default=60,
+        default=43200,
         ge=5,
         description="Access token lifespan in minutes.",
     )

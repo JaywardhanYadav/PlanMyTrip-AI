@@ -1,4 +1,7 @@
-const API_BASE = "http://localhost:8000/api/v1";
+const API_BASE = (window.location && window.location.origin && window.location.origin.startsWith("http"))
+  ? `${window.location.origin}/api/v1`
+  : "http://localhost:8000/api/v1";
+window.API_BASE = API_BASE;
 
 document.getElementById("signup-form").addEventListener("submit", async (e) => {
   e.preventDefault();

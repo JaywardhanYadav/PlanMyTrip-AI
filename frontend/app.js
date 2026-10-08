@@ -1,3 +1,7 @@
+const API_BASE = window.API_BASE || ((window.location && window.location.origin && window.location.origin.startsWith("http"))
+  ? `${window.location.origin}/api/v1`
+  : "http://localhost:8000/api/v1");
+
 let currentOptions = { flights: [], hotels: [], activities: [] };
 
 function formatCurrentTime() {
@@ -25,6 +29,14 @@ async function sendChatMessage() {
   const token = localStorage.getItem("planmytrip_token");
   const agentMessageDiv = appendAgentMessage("Thinking...");
 
+  if (!token) {
+    agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Your session has ended. Please sign in to continue planning trips. <a href="login.html" style="color: var(--brand-accent); text-decoration: underline; font-weight: 600;">Go to Login</a></span>`;
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 1500);
+    return;
+  }
+
   let threadIdToUse = activeThreadId;
   if (!threadIdToUse) {
     try {
@@ -38,9 +50,17 @@ async function sendChatMessage() {
       else if (lower.includes("bali")) inferredDest = "Bali";
       else if (lower.includes("edinburgh") || lower.includes("scotland")) inferredDest = "Edinburgh";
       else if (lower.includes("france") || lower.includes("paris")) inferredDest = "France";
+      else if (lower.includes("pune")) inferredDest = "Pune";
+      else if (lower.includes("bangalore") || lower.includes("bengaluru") || lower.includes("benglore")) inferredDest = "Bangalore";
+      else if (lower.includes("mumbai") || lower.includes("bombay")) inferredDest = "Mumbai";
+      else if (lower.includes("delhi")) inferredDest = "Delhi";
+      else if (lower.includes("jaipur")) inferredDest = "Jaipur";
+      else if (lower.includes("hyderabad")) inferredDest = "Hyderabad";
+      else if (lower.includes("kolkata") || lower.includes("calcutta")) inferredDest = "Kolkata";
+      else if (lower.includes("chennai") || lower.includes("madras")) inferredDest = "Chennai";
       else {
-        const destMatch = message.match(/(?:to|visit|in|explore)\s+([A-Za-z]+)/i);
-        if (destMatch && destMatch[1]) {
+        const destMatch = message.match(/(?:to|visit|in|explore|for|plan|planning\s+for)\s+([A-Za-z]+)/i);
+        if (destMatch && destMatch[1] && !["trip", "a", "an", "the", "my", "vacation"].includes(destMatch[1].toLowerCase())) {
           inferredDest = destMatch[1].charAt(0).toUpperCase() + destMatch[1].slice(1);
         }
       }
@@ -61,20 +81,42 @@ async function sendChatMessage() {
           currency: "INR"
         })
       });
+
+      if (initRes.status === 401) {
+        localStorage.removeItem("planmytrip_token");
+        agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Your session has expired. Redirecting to login... <a href="login.html" style="color: var(--brand-accent); text-decoration: underline; font-weight: 600;">Click here to sign in</a></span>`;
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 1500);
+        return;
+      }
+
       if (initRes.ok) {
         const newTrip = await initRes.json();
         activeTripId = newTrip.id;
         activeThreadId = newTrip.thread_id;
         threadIdToUse = newTrip.thread_id;
-        loadTrips().catch(console.error);
+        window.history.pushState({}, "", `main.html?trip_id=${encodeURIComponent(newTrip.id)}`);
+        await loadTrips();
+        const activeItem = document.getElementById(`trip-item-${newTrip.id}`);
+        if (activeItem) {
+          document.querySelectorAll(".trip-item").forEach((el) => el.classList.remove("active"));
+          activeItem.classList.add("active");
+        }
+      } else {
+        const errJson = await initRes.json().catch(() => ({}));
+        agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Unable to start new trip: ${escapeHtml(errJson.detail || initRes.statusText || "Server error")}. Please try again.</span>`;
+        return;
       }
     } catch (e) {
       console.error(e);
+      agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Connection error starting trip. Please check server status.</span>`;
+      return;
     }
   }
 
   if (!threadIdToUse) {
-    agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Please select or create a trip first from "+ New Trip".</span>`;
+    agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Unable to establish chat session. Please refresh or try again.</span>`;
     return;
   }
 
@@ -86,6 +128,15 @@ async function sendChatMessage() {
         Authorization: `Bearer ${token}`,
       },
     });
+
+    if (response.status === 401) {
+      localStorage.removeItem("planmytrip_token");
+      agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Your session has expired. Redirecting to login...</span>`;
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 1500);
+      return;
+    }
 
     if (!response.ok) {
       throw new Error(`Chat stream failed: ${response.statusText}`);
