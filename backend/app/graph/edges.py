@@ -14,7 +14,7 @@ def route_intake(state: PlanMyTripState) -> Any:
     evaluation = state.get("intake_evaluation")
     if not evaluation or not evaluation.is_complete:
         return END
-    return ["flight_agent", "hotel_agent", "places_agent", "itinerary_agent"]
+    return "workers_orchestrator"
 
 
 def route_supervisor(state: PlanMyTripState) -> str:

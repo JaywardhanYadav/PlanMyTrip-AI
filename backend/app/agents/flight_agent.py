@@ -53,41 +53,14 @@ def parse_or_default_date(d_str: str | None, fallback: date) -> date:
 
 
 async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    dest_str = (state.get("destination") or "").lower()
-    messages = state.get("messages", [])
-    for m in messages:
-        dest_str += " " + str(m.content).lower()
+    raw_dest = (state.get("destination") or "Pune").strip()
+    raw_dep = (state.get("departure_station") or "Mumbai").strip()
 
-    if any(b in dest_str for b in ["bengl", "bangal", "bengal", "blr"]):
-        destination = "BLR"
-    elif any(g in dest_str for g in ["goa", "goi", "gox", "dabolim"]):
-        destination = "GOI"
-    elif any(j in dest_str for j in ["jaipur", "jai"]):
-        destination = "JAI"
-    elif any(mu in dest_str for mu in ["mumbai", "bombay", "bom"]):
-        destination = "BOM"
-    elif any(d in dest_str for d in ["delhi", "del"]):
-        destination = "DEL"
-    else:
-        destination = resolve_iata(state.get("destination"), "BLR")
-
-    dep_str = (state.get("departure_station") or "").lower()
-    for m in messages:
-        dep_str += " " + str(m.content).lower()
-
-    if any(p in dep_str for p in ["pune", "pnq"]):
-        origin = "PNQ"
-    elif any(d in dep_str for d in ["delhi", "del"]):
-        origin = "DEL"
-    elif any(m in dep_str for m in ["mumbai", "bom"]):
-        origin = "BOM"
-    elif any(b in dep_str for b in ["bengl", "bangal", "blr"]):
-        origin = "BLR"
-    else:
-        origin = resolve_iata(state.get("departure_station"), "PNQ")
+    destination = resolve_iata(raw_dest, "PNQ")
+    origin = resolve_iata(raw_dep, "BOM")
 
     if origin == destination:
-        origin = "PNQ" if destination != "PNQ" else "BOM"
+        origin = "BOM" if destination != "BOM" else "DEL"
 
     travelers = state.get("travelers_count") or 1
     if travelers < 1:

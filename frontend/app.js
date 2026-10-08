@@ -241,15 +241,12 @@ function handleSSEEvent(type, data, messageDiv) {
     if (node === "flight_agent" && update.flight_options) {
       currentOptions.flights = update.flight_options;
       updateAgentStatus("flight", "Flights discovered & ranked", "100%");
-      renderOptionsGrid();
     } else if (node === "hotel_agent" && update.hotel_options) {
       currentOptions.hotels = update.hotel_options;
       updateAgentStatus("hotel", "Hotels selected within budget", "100%");
-      renderOptionsGrid();
     } else if (node === "itinerary_agent" && update.activity_options) {
       currentOptions.activities = update.activity_options;
       updateAgentStatus("itinerary", "Day-wise activities scheduled", "95%");
-      renderOptionsGrid();
     }
   } else if (type === "intake_update") {
     if (data && data.destination && typeof loadTrips === "function") {
@@ -259,7 +256,8 @@ function handleSSEEvent(type, data, messageDiv) {
     messageDiv.innerHTML = formatMarkdown(data.draft);
     updateAgentStatus("itinerary", "Itinerary completed", "100%");
   } else if (type === "interrupt") {
-    showHitlPanel();
+    const panel = document.getElementById("hitl-panel");
+    if (panel) panel.style.display = "none";
   } else if (type === "done") {
     if (activeTripId && typeof loadTripIntake === "function") {
       loadTripIntake(activeTripId);
@@ -270,57 +268,7 @@ function handleSSEEvent(type, data, messageDiv) {
   }
 }
 
-function renderOptionsGrid() {
-  let cardsContainer = document.getElementById("active-options-container");
-  if (!cardsContainer) {
-    cardsContainer = document.createElement("div");
-    cardsContainer.id = "active-options-container";
-    cardsContainer.className = "options-grid";
-    document.getElementById("chat-messages").appendChild(cardsContainer);
-  }
-
-  let html = "";
-
-  currentOptions.flights.forEach((f) => {
-    const formattedFare = parseFloat(f.fare.amount).toLocaleString("en-IN");
-    html += `
-      <div class="option-card">
-        <div>
-          <span class="option-badge">✈️ Flight Option</span>
-          <div class="option-title">${escapeHtml(f.carrier)}</div>
-          <div class="option-price">₹${formattedFare} ${escapeHtml(f.fare.currency)}</div>
-          <div class="option-meta">
-            Duration: ${f.legs[0]?.duration_minutes || 180} mins<br>
-            Route: ${f.legs[0]?.origin_iata} ➔ ${f.legs[0]?.destination_iata}
-          </div>
-        </div>
-        <div style="margin-top: 8px;"><span style="font-size: 0.75rem; color: #2563eb; background: #eff6ff; padding: 4px 8px; border-radius: 4px; font-weight: 600;">Included in Itinerary</span></div>
-      </div>
-    `;
-  });
-
-  currentOptions.hotels.forEach((h) => {
-    const formattedTotal = parseFloat(h.total_rate.amount).toLocaleString("en-IN");
-    const formattedNightly = parseFloat(h.nightly_rate.amount).toLocaleString("en-IN");
-    html += `
-      <div class="option-card">
-        <div>
-          <span class="option-badge" style="background: rgba(16, 185, 129, 0.1); color: #059669;">🏨 Hotel Option</span>
-          <div class="option-title">${escapeHtml(h.name)}</div>
-          <div class="option-price">₹${formattedTotal} total</div>
-          <div class="option-meta">
-            ${escapeHtml(h.location)}<br>
-            Nightly: ₹${formattedNightly}
-          </div>
-        </div>
-        <div style="margin-top: 8px;"><span style="font-size: 0.75rem; color: #059669; background: #ecfdf5; padding: 4px 8px; border-radius: 4px; font-weight: 600;">Available Option</span></div>
-      </div>
-    `;
-  });
-
-  cardsContainer.innerHTML = html;
-  scrollChatToBottom();
-}
+function renderOptionsGrid() {}
 
 function selectFlightOption(optionId) {}
 

@@ -137,6 +137,40 @@ DESTINATION_KNOWLEDGE: dict[str, dict[str, Any]] = {
             "easiest_way": "Use Uber Premier or Ola for air-conditioned city transit avoiding local train peak crowds."
         },
         "stay_strategy": "Stay in South Mumbai (Colaba) for historical sightseeing, or near BKC/Bandra if you prefer quick airport connectivity and contemporary nightlife."
+    },
+    "PUNE": {
+        "zones": [
+            {
+                "zone_name": "Historic Peshwa Heritage & Royal Palaces",
+                "places": [
+                    "Shaniwar Wada (Grand 18th-century Peshwa fort palace with historic fountains and ramparts)",
+                    "Aga Khan Palace (Italian arches, tranquil gardens, and national Gandhi memorial)",
+                    "Dagdusheth Halwai Ganpati Temple & Tulshibaug heritage craft market",
+                    "Raja Dinkar Kelkar Museum (Historic 3-floor treasure trove of royal Maratha artifacts)"
+                ],
+                "recommended_stay_area": "Senapati Bapat Road, Shivajinagar, or Koregaon Park",
+                "stay_reason": "Central location providing 10-15 minutes reach to major historic palaces, museums, and premier dining hubs."
+            },
+            {
+                "zone_name": "Scenic Mountain Forts, Nature & Cafe Enclaves",
+                "places": [
+                    "Sinhagad Fort (Scenic mountain fortress, misty ridge trek & traditional pitla bhakri)",
+                    "Khadakwasla Dam & Panshet Lake viewpoints (Lakeside breeze & sunset viewpoints)",
+                    "Koregaon Park & Osho Teerth Zen Gardens (Lush bamboo walkways, German Bakery & artisan cafes)",
+                    "Vetal Tekdi / ARAI Hill (Highest point in Pune with panoramic city sunrise vistas)"
+                ],
+                "recommended_stay_area": "Koregaon Park or Kalyani Nagar",
+                "stay_reason": "Tree-lined boulevards with vibrant cafes, fine-dining restaurants, and relaxing boutique stays."
+            }
+        ],
+        "transit_guide": {
+            "best_option": "Dedicated chauffeur private cab (Ola/Uber Premier or rental cab)",
+            "car_rental_rate": "₹2,200 - ₹3,500 per day for AC sedan/SUV with driver",
+            "scooter_rental_rate": "₹450 - ₹650 per day",
+            "taxi_guidance": "Pune International Airport (PNQ) is in Lohegaon (~10 km from city center). Prepaid airport taxis and Uber/Ola are readily available. For Sinhagad Fort, private day cabs are recommended due to steep hill ghats.",
+            "easiest_way": "Book a full-day AC chauffeur cab (~₹2,500/day) for comfortable, hassle-free sightseeing across historic city zones and Sinhagad."
+        },
+        "stay_strategy": "For a 5-day trip, staying at a luxury hotel in Central Pune or Koregaon Park (like The Ritz-Carlton, JW Marriott, or Conrad Pune) gives you the best mix of luxury amenities, spa relaxation, and convenient access to all heritage spots and hill forts without switching hotels."
     }
 }
 
@@ -145,6 +179,8 @@ def get_destination_cluster_data(destination: str) -> dict[str, Any]:
     dest_clean = destination.upper().strip()
     if any(b in dest_clean for b in ["BENGL", "BANGAL", "BENGAL", "BLR"]):
         return DESTINATION_KNOWLEDGE["BANGALORE"]
+    elif any(p in dest_clean for p in ["PUNE", "PNQ"]):
+        return DESTINATION_KNOWLEDGE["PUNE"]
 
     for key, data in DESTINATION_KNOWLEDGE.items():
         if key in dest_clean or dest_clean in key:
@@ -185,23 +221,22 @@ def get_destination_cluster_data(destination: str) -> dict[str, Any]:
 
 
 async def places_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    dest_str = (state.get("destination") or "").lower()
-    messages = state.get("messages", [])
-    for m in messages:
-        dest_str += " " + str(m.content).lower()
-
-    if any(b in dest_str for b in ["bengl", "bangal", "bengal", "blr"]):
+    raw_dest = (state.get("destination") or "Pune").strip()
+    clean = raw_dest.upper()
+    if any(p in clean for p in ["PUNE", "PNQ"]):
+        destination = "Pune"
+    elif any(b in clean for b in ["BENGL", "BANGAL", "BENGAL", "BLR"]):
         destination = "Bangalore"
-    elif any(g in dest_str for g in ["goa", "goi", "dabolim"]):
+    elif any(g in clean for g in ["GOA", "GOI", "DABOLIM"]):
         destination = "Goa"
-    elif any(j in dest_str for j in ["jaipur", "jai"]):
+    elif any(j in clean for j in ["JAIPUR", "JAI"]):
         destination = "Jaipur"
-    elif any(m in dest_str for m in ["mumbai", "bombay", "bom"]):
+    elif any(m in clean for m in ["MUMBAI", "BOMBAY", "BOM"]):
         destination = "Mumbai"
-    elif any(d in dest_str for d in ["delhi", "del"]):
+    elif any(d in clean for d in ["DELHI", "DEL"]):
         destination = "Delhi"
     else:
-        destination = state.get("destination") or "Bangalore"
+        destination = raw_dest or "Pune"
 
     registry = MCPRegistry()
     mcp_places: list[dict[str, Any]] = []

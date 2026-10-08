@@ -6,26 +6,24 @@ from ..mcp_client.registry import MCPRegistry
 
 
 async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    destination = state.get("destination") or "Goa"
-    target_date = state.get("start_date") or "2026-12-01"
+    raw_dest = (state.get("destination") or "Pune").strip()
+    clean = raw_dest.upper()
+    if any(p in clean for p in ["PUNE", "PNQ"]):
+        destination = "Pune"
+    elif any(b in clean for b in ["BENGL", "BANGAL", "BENGAL", "BLR"]):
+        destination = "Bangalore"
+    elif any(g in clean for g in ["GOA", "GOI", "DABOLIM"]):
+        destination = "Goa"
+    elif any(j in clean for j in ["JAIPUR", "JAI"]):
+        destination = "Jaipur"
+    elif any(m in clean for m in ["MUMBAI", "BOMBAY", "BOM"]):
+        destination = "Mumbai"
+    elif any(d in clean for d in ["DELHI", "DEL"]):
+        destination = "Delhi"
+    else:
+        destination = raw_dest or "Pune"
 
-    messages = state.get("messages", [])
-    if messages:
-        last_msg = str(messages[-1].content).lower()
-        if "goa" in last_msg:
-            destination = "Goa"
-        elif "mumbai" in last_msg:
-            destination = "Mumbai"
-        elif "delhi" in last_msg:
-            destination = "Delhi"
-        elif "bangalore" in last_msg:
-            destination = "Bangalore"
-        elif "paris" in last_msg:
-            destination = "Paris"
-        elif "london" in last_msg:
-            destination = "London"
-        elif "tokyo" in last_msg:
-            destination = "Tokyo"
+    target_date = state.get("start_date") or "2026-10-10"
 
     registry = MCPRegistry()
 

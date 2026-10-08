@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 from typing import Any
 from langchain_core.messages import AIMessage
@@ -7,12 +8,11 @@ from ..agents.hotel_agent import hotel_agent_node
 from ..agents.intake_agent import evaluate_trip_intake
 from ..agents.itinerary_agent import itinerary_agent_node
 from ..agents.places_agent import places_agent_node
-from ..agents.supervisor import supervisor_node
 from ..agents.synthesis_agent import synthesis_agent_node
 from ..core.money import Money
 from ..core.state import PlanMyTripState
 from ..guardrails.input_guard import evaluate_input_guardrail
-from .edges import route_guardrail, route_intake, route_supervisor
+from .edges import route_guardrail, route_intake
 
 
 async def input_guard_node(state: PlanMyTripState) -> dict[str, object]:
@@ -56,28 +56,34 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
     return updates
 
 
+async def workers_orchestrator_node(state: PlanMyTripState) -> dict[str, object]:
+    flight_res, hotel_res, places_res, itin_res = await asyncio.gather(
+        flight_agent_node(state),
+        hotel_agent_node(state),
+        places_agent_node(state),
+        itinerary_agent_node(state),
+    )
+    combined: dict[str, object] = {}
+    combined.update(flight_res)
+    combined.update(hotel_res)
+    combined.update(places_res)
+    combined.update(itin_res)
+    return combined
+
+
 def build_trip_graph(checkpointer: Any = None) -> Any:
     builder = StateGraph(PlanMyTripState)
 
     builder.add_node("input_guard", input_guard_node)
     builder.add_node("intake_supervisor", intake_supervisor_node)
-    builder.add_node("flight_agent", flight_agent_node)
-    builder.add_node("hotel_agent", hotel_agent_node)
-    builder.add_node("places_agent", places_agent_node)
-    builder.add_node("itinerary_agent", itinerary_agent_node)
-    builder.add_node("supervisor", supervisor_node)
+    builder.add_node("workers_orchestrator", workers_orchestrator_node)
     builder.add_node("synthesis_agent", synthesis_agent_node)
 
     builder.add_edge(START, "input_guard")
     builder.add_conditional_edges("input_guard", route_guardrail)
     builder.add_conditional_edges("intake_supervisor", route_intake)
 
-    builder.add_edge("flight_agent", "supervisor")
-    builder.add_edge("hotel_agent", "supervisor")
-    builder.add_edge("places_agent", "supervisor")
-    builder.add_edge("itinerary_agent", "supervisor")
-
-    builder.add_conditional_edges("supervisor", route_supervisor)
+    builder.add_edge("workers_orchestrator", "synthesis_agent")
     builder.add_edge("synthesis_agent", END)
 
     return builder.compile(

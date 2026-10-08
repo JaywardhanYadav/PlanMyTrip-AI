@@ -118,6 +118,43 @@ HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
             "amenities": "Modern boutique rooms, buffet breakfast, elevator, high-speed Wi-Fi, walking distance to monuments.",
         },
     ],
+    "PUNE": [
+        {
+            "tier": "ultra_luxury",
+            "name": "The Ritz-Carlton, Pune",
+            "location": "Golf Course Road, Yerwada, Pune",
+            "nightly_rate": Decimal("21500.00"),
+            "amenities": "Panoramic Poona Club golf course views, lavish wellness spa, rooftop Aish fine dining, signature suites.",
+        },
+        {
+            "tier": "luxury",
+            "name": "JW Marriott Hotel Pune",
+            "location": "Senapati Bapat Road, Central Pune",
+            "nightly_rate": Decimal("15500.00"),
+            "amenities": "Iconic luxury city hotel, outdoor heated pool, Quan Spa, Paasha rooftop lounge, premium dining.",
+        },
+        {
+            "tier": "luxury",
+            "name": "Conrad Pune - Luxury by Hilton",
+            "location": "Mangaldas Road, Koregaon Park, Pune",
+            "nightly_rate": Decimal("16500.00"),
+            "amenities": "Art-deco inspired architecture, temperature-controlled pool, signature Coriander Kitchen & Koji Asian dining.",
+        },
+        {
+            "tier": "comfort",
+            "name": "Hyatt Pune",
+            "location": "Kalyani Nagar (near Aga Khan Palace), Pune",
+            "nightly_rate": Decimal("6200.00"),
+            "amenities": "Lush garden poolside dining, outdoor pool, modern fitness center, serene spa, close to Koregaon Park.",
+        },
+        {
+            "tier": "budget",
+            "name": "Bloom Hotel - Koregaon Park",
+            "location": "Koregaon Park, Pune",
+            "nightly_rate": Decimal("3200.00"),
+            "amenities": "Modern boutique rooms, high-speed Wi-Fi, cloud beds, walking distance to cafes and Osho garden.",
+        },
+    ],
 }
 
 
@@ -180,23 +217,22 @@ def get_default_catalog(dest: str, budget: Decimal) -> list[dict[str, object]]:
 
 
 async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    dest_str = (state.get("destination") or "").lower()
-    messages = state.get("messages", [])
-    for m in messages:
-        dest_str += " " + str(m.content).lower()
-
-    if any(b in dest_str for b in ["bengl", "bangal", "bengal", "blr"]):
+    raw_dest = (state.get("destination") or "Pune").strip()
+    clean = raw_dest.upper()
+    if any(p in clean for p in ["PUNE", "PNQ"]):
+        destination = "Pune"
+    elif any(b in clean for b in ["BENGL", "BANGAL", "BENGAL", "BLR"]):
         destination = "Bangalore"
-    elif any(g in dest_str for g in ["goa", "goi", "dabolim"]):
+    elif any(g in clean for g in ["GOA", "GOI", "DABOLIM"]):
         destination = "Goa"
-    elif any(j in dest_str for j in ["jaipur", "jai"]):
+    elif any(j in clean for j in ["JAIPUR", "JAI"]):
         destination = "Jaipur"
-    elif any(m in dest_str for m in ["mumbai", "bombay", "bom"]):
+    elif any(m in clean for m in ["MUMBAI", "BOMBAY", "BOM"]):
         destination = "Mumbai"
-    elif any(d in dest_str for d in ["delhi", "del"]):
+    elif any(d in clean for d in ["DELHI", "DEL"]):
         destination = "Delhi"
     else:
-        destination = state.get("destination") or "Bangalore"
+        destination = raw_dest or "Pune"
 
     nights = 3
     start_str = state.get("start_date")
