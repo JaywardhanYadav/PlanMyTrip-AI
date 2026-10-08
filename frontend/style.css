@@ -1244,10 +1244,6 @@ a:hover {
 }
 
 .bottom-input-container {
-  display: none !important;
-}
-
-.main-content.conversation-active .bottom-input-container {
   display: flex !important;
   position: absolute;
   bottom: 0;
@@ -1258,7 +1254,8 @@ a:hover {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  z-index: 25;
+  z-index: 50;
+  pointer-events: auto;
 }
 
 .main-content.conversation-active .hero-showcase {
@@ -1353,11 +1350,19 @@ a:hover {
   transition: all 0.2s;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
   flex-shrink: 0;
+  position: relative;
+  z-index: 55;
+  pointer-events: auto;
 }
 
 .btn-capsule-send:hover {
   background: #1d4ed8;
   transform: scale(1.05);
+}
+
+.btn-capsule-send svg,
+.btn-capsule-send svg * {
+  pointer-events: none;
 }
 
 .prompt-pills-row {

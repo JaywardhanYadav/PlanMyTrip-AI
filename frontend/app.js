@@ -379,17 +379,29 @@ function formatMarkdown(text) {
     .replace(/\n/gim, "<br>");
 }
 
-const sendBtn = document.getElementById("chat-send-btn");
-if (sendBtn) {
-  sendBtn.addEventListener("click", sendChatMessage);
+function attachChatEventListeners() {
+  const sendBtn = document.getElementById("chat-send-btn");
+  if (sendBtn) {
+    sendBtn.onclick = (e) => {
+      if (e) e.preventDefault();
+      sendChatMessage();
+    };
+  }
+  const chatInput = document.getElementById("chat-input");
+  if (chatInput) {
+    chatInput.onkeydown = (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    };
+  }
+  const hitlApprove = document.getElementById("hitl-approve-btn");
+  if (hitlApprove) {
+    hitlApprove.onclick = approvePlan;
+  }
 }
-const chatInput = document.getElementById("chat-input");
-if (chatInput) {
-  chatInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendChatMessage();
-  });
-}
-const hitlApprove = document.getElementById("hitl-approve-btn");
-if (hitlApprove) {
-  hitlApprove.addEventListener("click", approvePlan);
-}
+
+attachChatEventListeners();
+document.addEventListener("DOMContentLoaded", attachChatEventListeners);
+window.addEventListener("load", attachChatEventListeners);
