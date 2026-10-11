@@ -20,6 +20,8 @@ async def itinerary_agent_node(state: PlanMyTripState) -> dict[str, object]:
         destination = "Mumbai"
     elif any(d in clean for d in ["DELHI", "DEL"]):
         destination = "Delhi"
+    elif any(k in clean for k in ["KERALA", "KOCHI", "COCHIN", "MUNNAR", "ALLEPPEY"]):
+        destination = "Kerala"
     else:
         destination = raw_dest or "Pune"
 

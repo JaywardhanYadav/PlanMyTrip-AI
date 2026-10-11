@@ -120,6 +120,62 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
     client = get_openai_client()
     settings = get_settings()
 
+    total_days = state.get("duration_days")
+    if not total_days:
+        try:
+            d_start = datetime.fromisoformat(str(start_d)).date()
+            d_end = datetime.fromisoformat(str(end_d)).date()
+            diff = (d_end - d_start).days
+            if diff > 0:
+                total_days = diff
+        except Exception:
+            pass
+    if not total_days or total_days < 1:
+        total_days = 3
+
+    if total_days <= 1:
+        day_format_rules = (
+            f"### Day 1: Full-Day Destination Tour & Return Journey\n"
+            f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show morning outbound options with timings, airline, and prices.\n"
+            f"- **Airport Transfer**: Instructions on airport transfer with typical fare.\n"
+            f"- **Planned Sightseeing & Day Activities**: Full day itinerary with top attractions.\n"
+            f"- **How to Visit & Easiest Transport**: Easiest local transit advice.\n"
+            f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show evening return options with timings, airline, and prices.\n\n"
+        )
+    elif total_days == 2:
+        day_format_rules = (
+            f"### Day 1: Arrival, Transfers & Settling In\n"
+            f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show all options with timings, airline, and prices (per person & total for {travelers}).\n"
+            f"- **Airport Transfer**: Clear instructions on airport transfer with typical fare.\n"
+            f"- **Available Hotels to Check-in & Rest**: List all available hotel options with nightly prices, total stay prices for 2 nights, location, and amenities/activities.\n"
+            f"- **Afternoon & Evening Plan**: Unwind and relax at hotel or nearby dining.\n\n"
+            f"### Day 2: Morning Exploration, Wrap-Up & Return Journey\n"
+            f"- **Planned Sightseeing & Morning Plan**: Morning sights, hotel check-out, and local market souvenir stop.\n"
+            f"- **Airport Transfer**: Cab back to airport with typical fare.\n"
+            f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show return flight options with timings, airline, and prices.\n\n"
+        )
+    else:
+        day_format_rules = (
+            f"### Day 1: Arrival, Transfers & Settling In\n"
+            f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show all options with timings, airline, flight number, and prices (per person & total for {travelers}).\n"
+            f"- **Airport Transfer**: Clear instructions on airport transfer with typical fare.\n"
+            f"- **Available Hotels to Check-in & Rest**: List all available hotel options with nightly prices, total stay prices for {total_days} nights, location, and amenities/activities.\n"
+            f"- **Evening Plan**: Unwind and relax at hotel or nearby dining.\n\n"
+        )
+        for d_i in range(2, total_days):
+            day_format_rules += (
+                f"### Day {d_i}: [Dedicated Theme / Region / Sightseeing for Day {d_i}]\n"
+                f"- **Planned Sightseeing**: Morning, afternoon, and evening sights grouped logically by zone/region with highlights.\n"
+                f"- **How to Visit & Easiest Transport**: Specific transport advice (chauffeur cab, rental car, Uber) with rates.\n"
+                f"- **Where to Stay Tonight**: Clear recommendation on whether to continue staying at the same hotel or relocate to the next scenic zone to save transit time.\n\n"
+            )
+        day_format_rules += (
+            f"### Day {total_days}: Morning Wrap-Up & Return Journey\n"
+            f"- **Morning Plan**: Hotel check-out, breakfast, and last-minute local shopping or sightseeing.\n"
+            f"- **Airport Transfer**: Cab back to airport with typical fare.\n"
+            f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show return flight options with timings, airline, and prices.\n\n"
+        )
+
     prompt = (
         f"You are the Synthesis Agent for PlanMyTrip AI. You are a dedicated travel planner, NOT a budget accountant.\n"
         f"Construct a rich, practical, chronologically structured day-by-day travel itinerary for {travelers} traveler{'s' if travelers > 1 else ''}.\n\n"
@@ -127,6 +183,7 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
         f"- Origin / Departure City: {dep_station}\n"
         f"- Destination: {dest}\n"
         f"- Number of Travelers: {travelers}\n"
+        f"- Trip Duration: {total_days} Days\n"
         f"- Travel Dates: {start_d} to {end_d}\n\n"
         f"Data Gathered by Worker Agents:\n"
         f"AVAILABLE OUTBOUND FLIGHTS (Day 1):\n{outbound_flights_text or '  * Scheduled flights from ' + dep_station + ' to ' + dest}\n\n"
@@ -138,29 +195,17 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
         f"- Scooter/bike: {rental_scooter_rate}\n"
         f"- Taxi guidance: {taxi_guidance}\n"
         f"- Stay strategy: {stay_strategy_text}\n\n"
-        f"AVAILABLE RETURN FLIGHTS (Last Day):\n{return_flights_text or '  * Scheduled return flights to ' + dep_station}\n\n"
-        f"MANDATORY FORMAT RULES:\n"
-        f"Present the itinerary broken down chronologically into days:\n\n"
-        f"### Day 1: Arrival, Transfers & Settling In\n"
-        f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show all options with timings, airline, flight number, and prices (per person & total for {travelers}).\n"
-        f"- **Airport Transfer**: Clear instructions on airport transfer with typical fare.\n"
-        f"- **Available Hotels to Check-in & Rest**: List all available hotel options with nightly prices, total stay prices, location, and amenities/activities.\n"
-        f"- **Evening Plan**: Unwind and relax at hotel or nearby dining.\n\n"
-        f"### Day 2: Exploring Nearby Attractions & Smart Stay\n"
-        f"- **Planned Sightseeing**: Clustered attractions near the city/zone.\n"
-        f"- **How to Visit & Easiest Transport**: Specific transport advice (chauffeur cab, rental car, Uber) with rates.\n"
-        f"- **Where to Stay Tonight**: Explain whether to stay at the same Day 1 hotel or change area.\n\n"
-        f"### Day 3 (or Final Day): Morning Wrap-Up & Return Journey\n"
-        f"- **Morning Plan**: Hotel check-out, breakfast, and local shopping.\n"
-        f"- **Airport Transfer**: Cab back to airport.\n"
-        f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show return flight options with timings, airline, and prices.\n\n"
+        f"AVAILABLE RETURN FLIGHTS (Day {total_days}):\n{return_flights_text or '  * Scheduled return flights to ' + dep_station}\n\n"
+        f"MANDATORY DYNAMIC DAY-BY-DAY FORMAT RULES:\n"
+        f"CRITICAL: The user has booked a {total_days}-Day trip. You MUST generate an individual '### Day X: ...' section for EVERY SINGLE DAY from Day 1 to Day {total_days}. Do NOT skip any day, do NOT combine days, and do NOT stop before Day {total_days}.\n\n"
+        f"{day_format_rules}"
         f"### 💰 Estimated Trip Cost Breakdown\n"
         f"CRITICAL RULES FOR TRIP COST:\n"
         f"1. We are a travel planner, NOT an accountant or budget calculator. Do NOT calculate 'Remaining Budget' or 'Remaining Balance'.\n"
         f"2. NEVER do arithmetic addition in front of the user (STRICTLY PROHIBITED: do NOT write equations or formulas like '₹A (Flights) + ₹B (Hotels) + ... = ₹Total').\n"
         f"3. We cannot provide a rigid or perfect total. Instead, present realistic indicative average costs for each category, followed by an overall indicative average total cost:\n"
         f"   - **Roundtrip Flights (for {travelers})**: ~₹... (indicative estimate for outbound and return)\n"
-        f"   - **Accommodation (Total Stay)**: ~₹... (indicative estimate for recommended stay)\n"
+        f"   - **Accommodation (Total Stay for {total_days} nights)**: ~₹... (indicative estimate for recommended stay)\n"
         f"   - **Local Transit & Transfers**: ~₹... (indicative estimate for cabs and local sightseeing transit)\n"
         f"   - **Dining & Activities**: ~₹... (realistic average for {travelers} traveler{'s' if travelers > 1 else ''})\n"
         f"   - **Estimated Average Total Trip Cost**: ~₹... (approximate average cost for the entire trip; do NOT show any addition formula or sum equation)\n"
@@ -182,9 +227,29 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
         if not draft:
             raise ValueError("Empty response from worker model")
     except Exception:
+        fallback_intermediate = ""
+        for day_num in range(2, total_days):
+            zone_idx = (day_num - 2) % len(zones_list) if zones_list else 0
+            curr_zone = zones_list[zone_idx] if zones_list else {}
+            curr_z_name = curr_zone.get("zone_name", f"Scenic & Cultural Exploration (Part {day_num - 1})")
+            curr_z_places = curr_zone.get("places", [f"Explore top landmarks and scenic sights of {dest}"])
+            curr_z_stay = curr_zone.get("recommended_stay_area", "Primary hotel")
+            places_bullets = "\n".join([f"* {p}" for p in curr_z_places])
+            fallback_intermediate += (
+                f"---\n\n"
+                f"### Day {day_num}: {curr_z_name}\n\n"
+                f"📍 **Places to Visit & Activities:**\n"
+                f"{places_bullets}\n\n"
+                f"🚗 **How to Visit & Easiest Transport:**\n"
+                f"* **{easiest_transit}**\n"
+                f"* Local Transit & Cabs: {taxi_guidance}\n\n"
+                f"🏨 **Where to Stay Tonight:**\n"
+                f"* Recommended stay area: {curr_z_stay}\n\n"
+            )
+
         draft = (
             f"### Proposed {dest} Travel Itinerary ({travelers} Traveler{'s' if travelers > 1 else ''})\n\n"
-            f"**Travel Dates:** {start_d} to {end_d}\n\n"
+            f"**Travel Dates:** {start_d} to {end_d} ({total_days} Days)\n\n"
             f"---\n\n"
             f"### Day 1: Arrival, Transfers & Settling In\n\n"
             f"✈️ **Available Outbound Flights ({dep_station} ➔ {dest}):**\n"
@@ -193,19 +258,9 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
             f"🏨 **Available Nearby Hotels to Stay & Rest:**\n"
             f"{hotels_text}\n"
             f"🌅 **Evening Relaxation:** Check-in, refresh at the hotel pool or spa, and enjoy fine dining.\n\n"
+            f"{fallback_intermediate}"
             f"---\n\n"
-            f"### Day 2: City & Attraction Exploration\n\n"
-            f"📍 **Places to Visit:**\n"
-            f"{places_summary_text}\n"
-            f"🚗 **How to Visit & Easiest Transport:**\n"
-            f"* **{easiest_transit}**\n"
-            f"* Chauffeur / Rental Vehicle: {rental_car_rate}\n"
-            f"* Scooter / Bike Rental: {rental_scooter_rate}\n"
-            f"* Cabs & Transit: {taxi_guidance}\n\n"
-            f"🏨 **Where to Stay Tonight:**\n"
-            f"{stay_strategy_text}\n\n"
-            f"---\n\n"
-            f"### Day 3: Morning Wrap-Up & Return Journey\n\n"
+            f"### Day {total_days}: Morning Wrap-Up & Return Journey\n\n"
             f"🛍️ **Morning:** Leisurely breakfast, hotel check-out, and local market souvenir stop.\n"
             f"🚕 **Airport Transfer:** Hired cab to airport.\n\n"
             f"✈️ **Available Return Flights ({dest} ➔ {dep_station}):**\n"

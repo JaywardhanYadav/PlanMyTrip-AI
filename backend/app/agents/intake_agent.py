@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
@@ -156,6 +157,30 @@ async def evaluate_trip_intake(
         )
         parsed = response.choices[0].message.parsed
         if parsed:
+            if parsed.duration_days is None:
+                d_m = re.search(r"(\d+)\s*(?:day|days|d\b)", latest_lower)
+                if d_m:
+                    try:
+                        parsed.duration_days = int(d_m.group(1))
+                    except Exception:
+                        pass
+                elif existing_state.get("duration_days"):
+                    try:
+                        parsed.duration_days = int(str(existing_state["duration_days"]))
+                    except Exception:
+                        pass
+
+            if parsed.duration_days is not None and "duration_days" in parsed.missing_fields:
+                parsed.missing_fields.remove("duration_days")
+
+            if not parsed.start_date and any(kw in latest_lower for kw in ["tomorrow", "tomarrow"]):
+                try:
+                    today_d = datetime.fromisoformat(today_iso).date()
+                    parsed.start_date = (today_d + timedelta(days=1)).isoformat()
+                    parsed.is_date_confirmed = True
+                except Exception:
+                    pass
+
             if parsed.budget_inr is None and any(kw in latest_lower for kw in ["lakh", "lac", "cr", "thousand", "k", "budget", "inr", "₹", "rs"]):
                 inferred_amt = parse_indian_budget_decimal(latest_content)
                 if inferred_amt > Decimal("0"):
@@ -170,14 +195,14 @@ async def evaluate_trip_intake(
             if parsed.travelers_count is not None and "travelers_count" in parsed.missing_fields:
                 parsed.missing_fields.remove("travelers_count")
 
-            if parsed.start_date and parsed.duration_days and not parsed.end_date:
+            if parsed.start_date and parsed.duration_days:
                 try:
                     s_dt = datetime.fromisoformat(parsed.start_date)
                     parsed.end_date = (s_dt + timedelta(days=parsed.duration_days)).date().isoformat()
                 except Exception:
                     pass
 
-            if parsed.start_date and any(d_kw in latest_lower for d_kw in ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "oct", "nov", "dec", "2026", "next week", "yes"]):
+            if parsed.start_date and any(d_kw in latest_lower for d_kw in ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "oct", "nov", "dec", "2026", "next week", "yes", "tomorrow", "tomarrow"]):
                 parsed.is_date_confirmed = True
 
             if (
@@ -186,9 +211,10 @@ async def evaluate_trip_intake(
                 and parsed.travelers_count
                 and parsed.start_date
                 and parsed.duration_days
-                and parsed.budget_inr is not None
                 and parsed.is_date_confirmed
             ):
+                if parsed.budget_inr is None:
+                    parsed.budget_inr = 200000.0
                 parsed.is_complete = True
                 parsed.missing_fields = []
                 parsed.next_question_or_confirmation = None

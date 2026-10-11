@@ -359,6 +359,7 @@ class PlanMyTripState(TypedDict, total=False):
     departure_station: str | None
     destination: str | None
     travelers_count: int | None
+    duration_days: int | None
     start_date: str | None
     end_date: str | None
 

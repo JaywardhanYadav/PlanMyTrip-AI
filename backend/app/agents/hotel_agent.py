@@ -155,6 +155,43 @@ HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
             "amenities": "Modern boutique rooms, high-speed Wi-Fi, cloud beds, walking distance to cafes and Osho garden.",
         },
     ],
+    "KERALA": [
+        {
+            "tier": "ultra_luxury",
+            "name": "Kumarakom Lake Resort & Luxury Houseboats",
+            "location": "Vembanad Lake, Kumarakom / Alleppey, Kerala",
+            "nightly_rate": Decimal("22500.00"),
+            "amenities": "Heritage backwater villas, meandering infinity pool, private plunge pools, Ayurmana Ayurvedic spa, luxury sunset backwater cruises.",
+        },
+        {
+            "tier": "luxury",
+            "name": "Grand Hyatt Kochi Bolgatty",
+            "location": "Bolgatty Island, Kochi, Kerala",
+            "nightly_rate": Decimal("14500.00"),
+            "amenities": "Waterfront resort overlooking Vembanad backwaters, Santata Ayurvedic spa, marina, Thai & Malabar fine dining, indoor and outdoor pools.",
+        },
+        {
+            "tier": "scenic_luxury",
+            "name": "Blanket Hotel & Spa Munnar",
+            "location": "Attukad Waterfalls, Munnar Hills, Kerala",
+            "nightly_rate": Decimal("11500.00"),
+            "amenities": "Panoramic mist and tea plantation valley vistas, heated infinity pool, nature treks, spa, organic multi-cuisine dining.",
+        },
+        {
+            "tier": "heritage_luxury",
+            "name": "Brunton Boatyard - CGH Earth",
+            "location": "Fort Kochi Historic Harbour, Kerala",
+            "nightly_rate": Decimal("16500.00"),
+            "amenities": "Restored Victorian shipyard architecture, harbor views with dolphins, History Restaurant, colonial sea-facing balconies.",
+        },
+        {
+            "tier": "comfort",
+            "name": "Spice Village - CGH Earth Thekkady",
+            "location": "Kumily / Periyar Tiger Reserve, Thekkady, Kerala",
+            "nightly_rate": Decimal("8500.00"),
+            "amenities": "Tribal village style cottages with elephant grass roofs, spice gardens, Ayurvedic center, close to Periyar safari gate.",
+        },
+    ],
 }
 
 
@@ -231,13 +268,15 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
         destination = "Mumbai"
     elif any(d in clean for d in ["DELHI", "DEL"]):
         destination = "Delhi"
+    elif any(k in clean for k in ["KERALA", "KOCHI", "COCHIN", "MUNNAR", "ALLEPPEY"]):
+        destination = "Kerala"
     else:
         destination = raw_dest or "Pune"
 
-    nights = 3
+    nights = state.get("duration_days") or 3
     start_str = state.get("start_date")
     end_str = state.get("end_date")
-    if start_str and end_str:
+    if start_str and end_str and not state.get("duration_days"):
         try:
             from datetime import date
             d1 = date.fromisoformat(str(start_str))

@@ -134,6 +134,16 @@ async def chat_stream(
                 "end_date": intake_end,
                 "user_name": user.name if user and user.name else "there",
             }
+            if intake_start and intake_end:
+                try:
+                    from datetime import date
+                    d_s = date.fromisoformat(str(intake_start))
+                    d_e = date.fromisoformat(str(intake_end))
+                    diff = (d_e - d_s).days
+                    if diff > 0:
+                        initial_input["duration_days"] = diff
+                except Exception:
+                    pass
             if user_budget:
                 initial_input["trip_budget"] = user_budget
             elif intake_budget:

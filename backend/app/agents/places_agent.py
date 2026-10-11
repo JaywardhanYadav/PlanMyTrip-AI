@@ -171,6 +171,62 @@ DESTINATION_KNOWLEDGE: dict[str, dict[str, Any]] = {
             "easiest_way": "Book a full-day AC chauffeur cab (~₹2,500/day) for comfortable, hassle-free sightseeing across historic city zones and Sinhagad."
         },
         "stay_strategy": "For a 5-day trip, staying at a luxury hotel in Central Pune or Koregaon Park (like The Ritz-Carlton, JW Marriott, or Conrad Pune) gives you the best mix of luxury amenities, spa relaxation, and convenient access to all heritage spots and hill forts without switching hotels."
+    },
+    "KERALA": {
+        "zones": [
+            {
+                "zone_name": "Fort Kochi & Coastal Heritage (Arrival & Colonial Culture)",
+                "places": [
+                    "Fort Kochi Chinese Fishing Nets & Promenade sunset walk",
+                    "Mattancherry Palace (Dutch Palace) & Jewish Synagogue in Jew Town spice market",
+                    "St. Francis Church (Oldest European church in India)",
+                    "Kerala Kathakali Centre evening classical dance & Kalaripayattu martial arts show"
+                ],
+                "recommended_stay_area": "Fort Kochi or Bolgatty Island waterfront",
+                "stay_reason": "Historic coastal atmosphere with easy access to ferries, art cafes, and spice trails."
+            },
+            {
+                "zone_name": "Munnar Hills, Tea Plantations & Waterfalls (Highland Retreat)",
+                "places": [
+                    "Eravikulam National Park (Home of endangered Nilgiri Tahr & Anamudi summit views)",
+                    "Tata Tea Museum & Lockhart Tea Estate panoramic tasting tour",
+                    "Attukad & Cheeyappara Waterfalls scenic viewpoint stops",
+                    "Mattupetty Dam & Kundala Lake boating surrounded by eucalyptus woods"
+                ],
+                "recommended_stay_area": "Munnar Tea Valley or Pallivasal",
+                "stay_reason": "High-altitude hill retreat located ~4 hours from Kochi; staying 2 nights in Munnar is essential to avoid mountain travel fatigue."
+            },
+            {
+                "zone_name": "Thekkady & Periyar Wildlife (Spice Plantations & Forest Reserve)",
+                "places": [
+                    "Periyar Tiger Reserve boat safari on Periyar Lake for wild elephant sightings",
+                    "Abraham's Spice Garden guided cardamom, cinnamon & pepper trail",
+                    "Kadathanadan Kalari Centre traditional martial arts showcase",
+                    "Bamboo rafting and nature forest walk"
+                ],
+                "recommended_stay_area": "Kumily / Thekkady Gateway",
+                "stay_reason": "Positioned midway between Munnar hills and Alleppey backwaters; ideal overnight stop for wildlife and spice tours."
+            },
+            {
+                "zone_name": "Alleppey & Kumarakom Backwaters (Houseboats & Serene Lagoons)",
+                "places": [
+                    "Alleppey Backwaters private luxury houseboat day/overnight cruise through palm canals",
+                    "Kumarakom Bird Sanctuary on Vembanad Lake shores",
+                    "Marari Beach (Serene white sand beach lined with coconut palms)",
+                    "Traditional Kerala backwater village canoe ride and Toddy shop seafood tasting"
+                ],
+                "recommended_stay_area": "Overnight Houseboat on Vembanad Lake or Kumarakom Lake Resort",
+                "stay_reason": "The quintessential Kerala backwater experience; staying directly on the backwaters provides peaceful sunrise views."
+            }
+        ],
+        "transit_guide": {
+            "best_option": "Dedicated private AC chauffeur car (Innova Crysta / Ertiga) for the full circuit",
+            "car_rental_rate": "₹3,200 - ₹4,200 per day for inter-district chauffeur SUV with all tolls and permits",
+            "scooter_rental_rate": "₹500 - ₹700 per day (best in Fort Kochi or Munnar town only)",
+            "taxi_guidance": "Cochin International Airport (COK) is the best gateway. For multi-day Kerala trips covering Kochi, Munnar, Thekkady, and Alleppey, booking a dedicated private car with driver for the entire duration is the smoothest and most cost-effective option (~₹3,500/day).",
+            "easiest_way": "Hire a private chauffeur vehicle for the entire multi-day itinerary. The driver stays with you throughout the route from airport pickup to final drop-off."
+        },
+        "stay_strategy": "For trips of 4 to 6 days across Kerala, a moving circuit is highly recommended: 1 night in Fort Kochi/Bolgatty upon arrival, 2 nights in Munnar hills, 1 night in Thekkady, and 1 to 2 nights in an Alleppey backwater resort or luxury houseboat before returning to Kochi airport."
     }
 }
 
@@ -181,6 +237,8 @@ def get_destination_cluster_data(destination: str) -> dict[str, Any]:
         return DESTINATION_KNOWLEDGE["BANGALORE"]
     elif any(p in dest_clean for p in ["PUNE", "PNQ"]):
         return DESTINATION_KNOWLEDGE["PUNE"]
+    elif any(k in dest_clean for k in ["KERALA", "KOCHI", "COCHIN", "MUNNAR", "ALLEPPEY"]):
+        return DESTINATION_KNOWLEDGE["KERALA"]
 
     for key, data in DESTINATION_KNOWLEDGE.items():
         if key in dest_clean or dest_clean in key:

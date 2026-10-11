@@ -2078,6 +2078,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin-top: 0.35rem;
 }
 
+.auth-footer {
+  color: #ffffff;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.auth-footer a {
+  color: #60a5fa;
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 0.35rem;
+  transition: color 0.2s;
+}
+
+.auth-footer a:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
 @media (max-width: 1024px) {
   .app-layout {
     flex-direction: column;
