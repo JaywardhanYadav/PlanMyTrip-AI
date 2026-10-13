@@ -1,10 +1,186 @@
+import re
+from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from langchain_core.messages import AIMessage
+from pydantic import BaseModel, ConfigDict, Field
 from ..core.config import get_openai_client, get_settings
 from ..core.money import Money, reconcile_trip_budget
 from ..core.state import PlanMyTripState
 from ..guardrails.output_guard import evaluate_output_guardrail
+from ..services.budget_reconciler import MultiTierTripBudget, reconcile_multi_tier_budget
+
+
+class DayActivityPlan(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    day_number: int = Field(description="Sequential day number starting from 1.")
+    day_theme: str = Field(description="Theme or focus region for the day.")
+    morning: str = Field(description="Morning itinerary activities and visits.")
+    afternoon: str = Field(description="Afternoon itinerary activities and lunch ideas.")
+    evening: str = Field(description="Evening itinerary activities and dinner relaxation.")
+    transport_mode: str = Field(description="Recommended local transport mode and advice.")
+    stay_area: str = Field(description="Recommended neighborhood or hotel area to stay tonight.")
+
+
+class FlightPlanItem(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    carrier: str = Field(description="Airline operating carrier name.")
+    timing: str = Field(description="Departure and arrival timing window.")
+    price_per_person_inr: float = Field(description="Indicative flight fare per traveler.")
+    total_price_inr: float = Field(description="Total indicative flight fare for all travelers.")
+    service_type: str = Field(description="Flight service window description.")
+
+
+class HotelPlanItem(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str = Field(description="Verified hotel name or chain brand.")
+    location: str = Field(description="Hotel neighborhood and district.")
+    nightly_rate_inr: float = Field(description="Indicative nightly rate in INR.")
+    total_stay_inr: float = Field(description="Total stay cost for all nights in INR.")
+    amenities: str = Field(description="Key amenities, features, and cancellation terms.")
+
+
+class TierSummary(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    tier_name: str = Field(description="Name of the budget tier.")
+    description: str = Field(description="Summary of the travel style.")
+    flights_total_inr: float = Field(description="Total roundtrip flights cost.")
+    accommodation_total_inr: float = Field(description="Total accommodation cost.")
+    transit_total_inr: float = Field(description="Total local transit cost.")
+    dining_total_inr: float = Field(description="Total dining and daily activities cost.")
+    total_trip_inr: float = Field(description="Indicative average total cost for this tier.")
+    notes: str = Field(default="", description="Summary notes.")
+
+
+class CostBreakdown(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    is_multi_tier: bool = Field(description="True if presenting multi-tier budget options.")
+    budget_tier: TierSummary = Field(description="Budget tier summary.")
+    mid_range_tier: TierSummary = Field(description="Mid-range tier summary.")
+    luxury_tier: TierSummary = Field(description="Luxury tier summary.")
+    recommended_tier_name: str = Field(description="Recommended tier for the user.")
+
+
+class StructuredItinerary(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    trip_title: str = Field(description="Engaging title for the trip itinerary.")
+    dates_formatted: str = Field(description="Formatted travel dates range.")
+    duration_label: str = Field(description="Trip duration label, e.g. '5 Days / 4 Nights'.")
+    origin: str = Field(description="Departure city.")
+    destination: str = Field(description="Destination city.")
+    gateway_note: str | None = Field(default=None, description="Internal gateway resolution notes.")
+    flights: list[FlightPlanItem] = Field(description="Outbound flight options.")
+    return_flights: list[FlightPlanItem] = Field(description="Return flight options.")
+    hotels: list[HotelPlanItem] = Field(description="Handpicked hotel options.")
+    day_plans: list[DayActivityPlan] = Field(description="Day-by-day activity plan for each day.")
+    cost_breakdown: CostBreakdown = Field(description="Structured cost breakdown across tiers.")
+    closing_note: str = Field(description="Warm concierge wishing note for their trip.")
+
+
+def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: MultiTierTripBudget) -> str:
+    clean_origin = re.sub(r"\s*\([A-Z]{3}\)", "", itinerary.origin).strip()
+    clean_dest = re.sub(r"\s*\([A-Z]{3}\)", "", itinerary.destination).strip()
+
+    parts: list[str] = []
+
+    parts.append(f"# {itinerary.trip_title}")
+    parts.append(f"**Travel Dates:** {itinerary.dates_formatted} ({itinerary.duration_label})")
+    parts.append(f"**Route:** {clean_origin} ➔ {clean_dest}")
+    parts.append("")
+    parts.append("---")
+    parts.append("")
+
+    for plan in itinerary.day_plans:
+        parts.append(f"### Day {plan.day_number}: {plan.day_theme}")
+        parts.append("")
+
+        if plan.day_number == 1 and itinerary.flights:
+            parts.append(f"✈️ **Available Outbound Flights ({clean_origin} ➔ {clean_dest}):**")
+            for idx, f in enumerate(itinerary.flights, 1):
+                parts.append(f"- **Option {idx}:** **{f.carrier}** ({f.service_type}) | Timings: {f.timing} | ₹{f.price_per_person_inr:,.0f} per person (Total: ₹{f.total_price_inr:,.0f})")
+            parts.append("")
+
+        if plan.day_number == 1 and itinerary.hotels:
+            parts.append(f"🏨 **Available Accommodation Options to Check-in & Rest:**")
+            for idx, h in enumerate(itinerary.hotels, 1):
+                clean_loc = re.sub(r"\s*\([A-Z]{3}\)", "", h.location).strip()
+                clean_hname = re.sub(r"\s*\([A-Z]{3}\)", "", h.name).strip()
+                parts.append(f"- **Option {idx}:** **{clean_hname}** ({clean_loc}) | Nightly: ₹{h.nightly_rate_inr:,.0f} | Total Stay: ₹{h.total_stay_inr:,.0f} | {h.amenities}")
+            parts.append("")
+
+        parts.append(f"🌅 **Morning:** {plan.morning}")
+        parts.append(f"☀️ **Afternoon:** {plan.afternoon}")
+        parts.append(f"🌆 **Evening:** {plan.evening}")
+        parts.append(f"🚗 **Local Transport & Transfers:** {plan.transport_mode}")
+        parts.append(f"📍 **Where to Stay Tonight:** {plan.stay_area}")
+        parts.append("")
+
+        if plan.day_number == len(itinerary.day_plans) and itinerary.return_flights:
+            parts.append(f"✈️ **Available Return Flights ({clean_dest} ➔ {clean_origin}):**")
+            for idx, rf in enumerate(itinerary.return_flights, 1):
+                parts.append(f"- **Return Option {idx}:** **{rf.carrier}** ({rf.service_type}) | Timings: {rf.timing} | ₹{rf.price_per_person_inr:,.0f} per person (Total: ₹{rf.total_price_inr:,.0f})")
+            parts.append("")
+
+        parts.append("---")
+        parts.append("")
+
+    parts.append("### 💰 Estimated Trip Cost Breakdown")
+    parts.append("")
+
+    if budget_data.budget_tier_specified == "unspecified":
+        parts.append("Since an exact budget was not specified, here are realistic average estimates across 3 standard travel tiers:")
+        parts.append("")
+
+        b_tier = budget_data.budget_tier
+        parts.append(f"#### 🏷️ 1. {b_tier.tier_name} (Smart Economy)")
+        parts.append(f"- **Travel Style:** {b_tier.description}")
+        parts.append(f"- **Roundtrip Flights:** ~{b_tier.total_flights_cost.to_formatted_str()} (for all {budget_data.travelers_count} travelers)")
+        parts.append(f"- **Accommodation ({budget_data.duration_nights} nights):** ~{b_tier.total_hotel_cost.to_formatted_str()} ({b_tier.hotel_tier_name})")
+        parts.append(f"- **Local Transit & Transfers:** ~{b_tier.total_transit_cost.to_formatted_str()}")
+        parts.append(f"- **Dining & Daily Expenses:** ~{b_tier.total_dining_cost.to_formatted_str()}")
+        parts.append(f"- **Estimated Average Total Trip Cost:** ~**{b_tier.total_trip_cost.to_formatted_str()}**")
+        parts.append("")
+
+        m_tier = budget_data.mid_range_tier
+        parts.append(f"#### 🏷️ 2. {m_tier.tier_name} (Comfort & Boutique)")
+        parts.append(f"- **Travel Style:** {m_tier.description}")
+        parts.append(f"- **Roundtrip Flights:** ~{m_tier.total_flights_cost.to_formatted_str()} (for all {budget_data.travelers_count} travelers)")
+        parts.append(f"- **Accommodation ({budget_data.duration_nights} nights):** ~{m_tier.total_hotel_cost.to_formatted_str()} ({m_tier.hotel_tier_name})")
+        parts.append(f"- **Local Transit & Transfers:** ~{m_tier.total_transit_cost.to_formatted_str()}")
+        parts.append(f"- **Dining & Daily Expenses:** ~{m_tier.total_dining_cost.to_formatted_str()}")
+        parts.append(f"- **Estimated Average Total Trip Cost:** ~**{m_tier.total_trip_cost.to_formatted_str()}**")
+        parts.append("")
+
+        l_tier = budget_data.luxury_tier
+        parts.append(f"#### 🏷️ 3. {l_tier.tier_name} (5-Star & Heritage Palace)")
+        parts.append(f"- **Travel Style:** {l_tier.description}")
+        parts.append(f"- **Roundtrip Flights:** ~{l_tier.total_flights_cost.to_formatted_str()} (for all {budget_data.travelers_count} travelers)")
+        parts.append(f"- **Accommodation ({budget_data.duration_nights} nights):** ~{l_tier.total_hotel_cost.to_formatted_str()} ({l_tier.hotel_tier_name})")
+        parts.append(f"- **Local Transit & Transfers:** ~{l_tier.total_transit_cost.to_formatted_str()}")
+        parts.append(f"- **Dining & Daily Expenses:** ~{l_tier.total_dining_cost.to_formatted_str()}")
+        parts.append(f"- **Estimated Average Total Trip Cost:** ~**{l_tier.total_trip_cost.to_formatted_str()}**")
+        parts.append("")
+    else:
+        rec = budget_data.recommended_tier
+        parts.append(f"#### 🏷️ {rec.tier_name} ({rec.description})")
+        parts.append(f"- **Roundtrip Flights:** ~{rec.total_flights_cost.to_formatted_str()} (for all {budget_data.travelers_count} travelers)")
+        parts.append(f"- **Accommodation ({budget_data.duration_nights} nights):** ~{rec.total_hotel_cost.to_formatted_str()} ({rec.hotel_tier_name})")
+        parts.append(f"- **Local Transit & Transfers:** ~{rec.total_transit_cost.to_formatted_str()}")
+        parts.append(f"- **Dining & Daily Expenses:** ~{rec.total_dining_cost.to_formatted_str()}")
+        parts.append(f"- **Estimated Average Total Trip Cost:** ~**{rec.total_trip_cost.to_formatted_str()}**")
+        parts.append("")
+
+    parts.append("*Note: All figures are indicative average estimates in Indian Rupees (₹ INR). Actual booking costs may fluctuate based on seasonal demand and advance reservations.*")
+    parts.append("")
+    parts.append(f"*{itinerary.closing_note}*")
+
+    return "\n".join(parts)
 
 
 async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
@@ -13,83 +189,159 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
     hotel_options = state.get("hotel_options", [])
     places_info = state.get("places_data", {})
     activity_options = state.get("activity_options", [])
+
     travelers = state.get("travelers_count") or 1
     if travelers < 1:
         travelers = 1
 
-    selected_flight_id = state.get("selected_flight_id")
-    selected_flights = [f for f in flight_options if f.option_id == selected_flight_id]
-    if not selected_flights and flight_options:
-        selected_flights = [flight_options[0]]
-    flight_costs = [f.fare for f in selected_flights]
+    dep_station = state.get("departure_station") or "Pune"
+    dest = state.get("destination") or "Gujarat"
+    gateway_note = state.get("gateway_note")
+    resolved_gateway = state.get("resolved_gateway")
+    display_dest = resolved_gateway or dest
+    clean_origin = re.sub(r"\s*\([A-Z]{3}\)", "", dep_station).strip()
+    clean_dest = re.sub(r"\s*\([A-Z]{3}\)", "", display_dest).strip()
+    start_d = state.get("start_date") or "2026-10-19"
+    end_d = state.get("end_date") or "2026-10-23"
 
-    selected_hotel_id = state.get("selected_hotel_id")
-    selected_hotels = [h for h in hotel_options if h.option_id == selected_hotel_id]
-    if not selected_hotels and hotel_options:
-        selected_hotels = [hotel_options[0]]
-    hotel_costs = [h.total_rate for h in selected_hotels]
+    total_days = state.get("duration_days")
+    if not total_days:
+        try:
+            d_start = datetime.fromisoformat(str(start_d)).date()
+            d_end = datetime.fromisoformat(str(end_d)).date()
+            diff = (d_end - d_start).days
+            if diff >= 0:
+                total_days = diff + 1
+        except Exception:
+            pass
+    if not total_days or total_days < 1:
+        total_days = 5
 
-    selected_act_ids = set(state.get("selected_activity_ids", []))
-    selected_activities = [a for a in activity_options if a.option_id in selected_act_ids]
-    if not selected_activities and activity_options:
-        selected_activities = activity_options[:2]
-    activity_costs = [a.cost for a in selected_activities]
+    total_nights = state.get("trip_nights")
+    if not total_nights or total_nights < 0:
+        total_nights = max(1, total_days - 1)
 
-    trip_budget = state.get("trip_budget")
-    if trip_budget and isinstance(trip_budget, Money):
-        total_cap = trip_budget
+    raw_tier = str(state.get("budget_tier") or "unspecified").lower()
+    budget_tier_literal: Literal["budget", "mid_range", "luxury", "unspecified"]
+    if raw_tier in ["budget", "mid_range", "luxury", "unspecified"]:
+        budget_tier_literal = raw_tier  # type: ignore[assignment]
     else:
-        total_cap = Money(amount=Decimal("150000.00"), currency="INR")
+        budget_tier_literal = "unspecified"
+
+    budget_data = reconcile_multi_tier_budget(
+        budget_tier=budget_tier_literal,
+        travelers_count=travelers,
+        duration_days=total_days,
+        duration_nights=total_nights,
+        flight_options=flight_options,
+        return_flight_options=return_flight_options,
+        hotel_options=hotel_options,
+    )
+
+    flight_costs = [f.fare for f in flight_options[:1]] if flight_options else [budget_data.recommended_tier.total_flights_cost]
+    hotel_costs = [h.total_rate for h in hotel_options[:1]] if hotel_options else [budget_data.recommended_tier.total_hotel_cost]
+    activity_costs = [a.cost for a in activity_options[:2]] if activity_options else [budget_data.recommended_tier.total_transit_cost]
+    trip_budget = state.get("trip_budget") or budget_data.recommended_tier.total_trip_cost
 
     budget_result = reconcile_trip_budget(
-        total_cap=total_cap,
+        total_cap=trip_budget,
         flight_costs=flight_costs,
         hotel_costs=hotel_costs,
         activity_costs=activity_costs,
     )
 
-    dep_station = state.get("departure_station") or "Pune"
-    dest = state.get("destination") or "Bangalore"
-    start_d = state.get("start_date") or "2026-10-11"
-    end_d = state.get("end_date") or "2026-10-14"
-
-    outbound_flights_text = ""
-    for idx, f in enumerate(flight_options, 1):
-        leg = f.legs[0] if f.legs else None
-        dep_str = leg.departure_time.strftime("%I:%M %p") if leg else "Morning"
-        arr_str = leg.arrival_time.strftime("%I:%M %p") if leg else "Afternoon"
-        dur = leg.duration_minutes if leg else 80
-        fl_no = f"{leg.carrier_code}-{leg.flight_number}" if leg else "Non-stop"
-        per_person = (f.fare.amount / Decimal(str(travelers))).quantize(Decimal("1"))
-        outbound_flights_text += (
-            f"  * Option {idx}: **{f.carrier}** ({fl_no}) | Dep: {dep_str} ➔ Arr: {arr_str} ({dur}m) | "
-            f"₹{per_person:,.0f} per person (Total: {f.fare.to_formatted_str()} for {travelers} traveler{'s' if travelers > 1 else ''})\n"
+    flight_items: list[FlightPlanItem] = []
+    for fo in flight_options[:3]:
+        leg = fo.legs[0] if fo.legs else None
+        dep_t = leg.departure_time.strftime("%I:%M %p") if leg else "07:15 AM"
+        arr_t = leg.arrival_time.strftime("%I:%M %p") if leg else "08:35 AM"
+        fl_label = leg.flight_number if leg and leg.flight_number else "Scheduled Service"
+        p_head = float(fo.fare.amount / Decimal(travelers))
+        flight_items.append(
+            FlightPlanItem(
+                carrier=fo.carrier,
+                timing=f"Dep: {dep_t} ➔ Arr: {arr_t}",
+                price_per_person_inr=p_head,
+                total_price_inr=float(fo.fare.amount),
+                service_type=fl_label,
+            )
         )
 
-    return_flights_text = ""
-    for idx, f in enumerate(return_flight_options, 1):
-        leg = f.legs[0] if f.legs else None
-        dep_str = leg.departure_time.strftime("%I:%M %p") if leg else "Afternoon"
-        arr_str = leg.arrival_time.strftime("%I:%M %p") if leg else "Evening"
-        dur = leg.duration_minutes if leg else 80
-        fl_no = f"{leg.carrier_code}-{leg.flight_number}" if leg else "Non-stop"
-        per_person = (f.fare.amount / Decimal(str(travelers))).quantize(Decimal("1"))
-        return_flights_text += (
-            f"  * Return Option {idx}: **{f.carrier}** ({fl_no}) | Dep: {dep_str} ➔ Arr: {arr_str} ({dur}m) | "
-            f"₹{per_person:,.0f} per person (Total: {f.fare.to_formatted_str()} for {travelers} traveler{'s' if travelers > 1 else ''})\n"
+    ret_items: list[FlightPlanItem] = []
+    for rfo in return_flight_options[:2]:
+        leg = rfo.legs[0] if rfo.legs else None
+        dep_t = leg.departure_time.strftime("%I:%M %p") if leg else "02:30 PM"
+        arr_t = leg.arrival_time.strftime("%I:%M %p") if leg else "03:55 PM"
+        fl_label = leg.flight_number if leg and leg.flight_number else "Scheduled Service"
+        p_head = float(rfo.fare.amount / Decimal(travelers))
+        ret_items.append(
+            FlightPlanItem(
+                carrier=rfo.carrier,
+                timing=f"Dep: {dep_t} ➔ Arr: {arr_t}",
+                price_per_person_inr=p_head,
+                total_price_inr=float(rfo.fare.amount),
+                service_type=fl_label,
+            )
         )
 
-    hotels_text = ""
-    for idx, h in enumerate(hotel_options, 1):
-        hotels_text += (
-            f"  * Option {idx}: **{h.name}** ({h.location}) | "
-            f"Nightly: {h.nightly_rate.to_formatted_str()} | Stay Total: {h.total_rate.to_formatted_str()} | "
-            f"{h.cancellation_terms}\n"
+    hotel_items: list[HotelPlanItem] = []
+    for ho in hotel_options[:3]:
+        clean_loc = re.sub(r"\s*\([A-Z]{3}\)", "", ho.location).strip()
+        clean_hname = re.sub(r"\s*\([A-Z]{3}\)", "", ho.name).strip()
+        hotel_items.append(
+            HotelPlanItem(
+                name=clean_hname,
+                location=clean_loc,
+                nightly_rate_inr=float(ho.nightly_rate.amount),
+                total_stay_inr=float(ho.total_rate.amount),
+                amenities=ho.cancellation_terms,
+            )
         )
 
-    transit_guide_dict: dict[str, Any] = {}
+    b_t = budget_data.budget_tier
+    m_t = budget_data.mid_range_tier
+    l_t = budget_data.luxury_tier
+    cost_breakdown_obj = CostBreakdown(
+        is_multi_tier=budget_data.budget_tier_specified == "unspecified",
+        budget_tier=TierSummary(
+            tier_name=b_t.tier_name,
+            description=b_t.description,
+            flights_total_inr=float(b_t.total_flights_cost.amount),
+            accommodation_total_inr=float(b_t.total_hotel_cost.amount),
+            transit_total_inr=float(b_t.total_transit_cost.amount),
+            dining_total_inr=float(b_t.total_dining_cost.amount),
+            total_trip_inr=float(b_t.total_trip_cost.amount),
+            notes="Smart budget tier.",
+        ),
+        mid_range_tier=TierSummary(
+            tier_name=m_t.tier_name,
+            description=m_t.description,
+            flights_total_inr=float(m_t.total_flights_cost.amount),
+            accommodation_total_inr=float(m_t.total_hotel_cost.amount),
+            transit_total_inr=float(m_t.total_transit_cost.amount),
+            dining_total_inr=float(m_t.total_dining_cost.amount),
+            total_trip_inr=float(m_t.total_trip_cost.amount),
+            notes="Comfort boutique tier.",
+        ),
+        luxury_tier=TierSummary(
+            tier_name=l_t.tier_name,
+            description=l_t.description,
+            flights_total_inr=float(l_t.total_flights_cost.amount),
+            accommodation_total_inr=float(l_t.total_hotel_cost.amount),
+            transit_total_inr=float(l_t.total_transit_cost.amount),
+            dining_total_inr=float(l_t.total_dining_cost.amount),
+            total_trip_inr=float(l_t.total_trip_cost.amount),
+            notes="5-star luxury heritage tier.",
+        ),
+        recommended_tier_name=budget_data.recommended_tier.tier_name,
+    )
+
+    flight_text_summary = "\n".join([f"- {f.carrier} ({f.service_type}) | {f.timing} | ₹{f.price_per_person_inr:,.0f}/person" for f in flight_items])
+    hotel_text_summary = "\n".join([f"- {h.name} ({h.location}) | ₹{h.nightly_rate_inr:,.0f}/night" for h in hotel_items])
+
     zones_list: list[dict[str, Any]] = []
-    stay_strategy_text = "Stay at your primary hotel to avoid repeated check-in hassle unless touring far regions."
+    stay_strategy_text = "Stay centrally to optimize daily transit."
+    transit_guide_dict: dict[str, Any] = {}
     if isinstance(places_info, dict):
         tg = places_info.get("transit_guide")
         if isinstance(tg, dict):
@@ -103,184 +355,168 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
 
     places_summary_text = ""
     for z in zones_list:
-        z_name = z.get("zone_name", "Local Zone")
+        z_name = z.get("zone_name", "Scenic Zone")
         z_places = z.get("places", [])
         z_stay = z.get("recommended_stay_area", "Central")
-        z_reason = z.get("stay_reason", "")
-        places_summary_text += f"\n- **{z_name}**:\n"
-        for p in z_places:
-            places_summary_text += f"  * {p}\n"
-        places_summary_text += f"  * *Stay in area*: {z_stay} ({z_reason})\n"
+        places_summary_text += f"\n- {z_name}: " + ", ".join([str(p) for p in z_places]) + f" (Stay in: {z_stay})"
 
-    easiest_transit = str(transit_guide_dict.get("easiest_way", "Chauffeur cab or Uber Premier."))
-    rental_car_rate = str(transit_guide_dict.get("car_rental_rate", "₹3,000/day for chauffeur vehicle"))
-    rental_scooter_rate = str(transit_guide_dict.get("scooter_rental_rate", "₹500/day"))
+    easiest_transit = str(transit_guide_dict.get("easiest_way", "App cabs or dedicated chauffeur vehicle."))
     taxi_guidance = str(transit_guide_dict.get("taxi_guidance", "Airport prepaid taxi or app cabs readily available."))
 
     client = get_openai_client()
     settings = get_settings()
 
-    total_days = state.get("duration_days")
-    if not total_days:
-        try:
-            d_start = datetime.fromisoformat(str(start_d)).date()
-            d_end = datetime.fromisoformat(str(end_d)).date()
-            diff = (d_end - d_start).days
-            if diff > 0:
-                total_days = diff
-        except Exception:
-            pass
-    if not total_days or total_days < 1:
-        total_days = 3
+    day_reqs = "\n".join([f"- Day {i}: Full individual plan for Day {i}" for i in range(1, total_days + 1)])
 
-    if total_days <= 1:
-        day_format_rules = (
-            f"### Day 1: Full-Day Destination Tour & Return Journey\n"
-            f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show morning outbound options with timings, airline, and prices.\n"
-            f"- **Airport Transfer**: Instructions on airport transfer with typical fare.\n"
-            f"- **Planned Sightseeing & Day Activities**: Full day itinerary with top attractions.\n"
-            f"- **How to Visit & Easiest Transport**: Easiest local transit advice.\n"
-            f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show evening return options with timings, airline, and prices.\n\n"
-        )
-    elif total_days == 2:
-        day_format_rules = (
-            f"### Day 1: Arrival, Transfers & Settling In\n"
-            f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show all options with timings, airline, and prices (per person & total for {travelers}).\n"
-            f"- **Airport Transfer**: Clear instructions on airport transfer with typical fare.\n"
-            f"- **Available Hotels to Check-in & Rest**: List all available hotel options with nightly prices, total stay prices for 2 nights, location, and amenities/activities.\n"
-            f"- **Afternoon & Evening Plan**: Unwind and relax at hotel or nearby dining.\n\n"
-            f"### Day 2: Morning Exploration, Wrap-Up & Return Journey\n"
-            f"- **Planned Sightseeing & Morning Plan**: Morning sights, hotel check-out, and local market souvenir stop.\n"
-            f"- **Airport Transfer**: Cab back to airport with typical fare.\n"
-            f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show return flight options with timings, airline, and prices.\n\n"
-        )
-    else:
-        day_format_rules = (
-            f"### Day 1: Arrival, Transfers & Settling In\n"
-            f"- **Available Outbound Flights ({dep_station} ➔ {dest})**: Show all options with timings, airline, flight number, and prices (per person & total for {travelers}).\n"
-            f"- **Airport Transfer**: Clear instructions on airport transfer with typical fare.\n"
-            f"- **Available Hotels to Check-in & Rest**: List all available hotel options with nightly prices, total stay prices for {total_days} nights, location, and amenities/activities.\n"
-            f"- **Evening Plan**: Unwind and relax at hotel or nearby dining.\n\n"
-        )
-        for d_i in range(2, total_days):
-            day_format_rules += (
-                f"### Day {d_i}: [Dedicated Theme / Region / Sightseeing for Day {d_i}]\n"
-                f"- **Planned Sightseeing**: Morning, afternoon, and evening sights grouped logically by zone/region with highlights.\n"
-                f"- **How to Visit & Easiest Transport**: Specific transport advice (chauffeur cab, rental car, Uber) with rates.\n"
-                f"- **Where to Stay Tonight**: Clear recommendation on whether to continue staying at the same hotel or relocate to the next scenic zone to save transit time.\n\n"
-            )
-        day_format_rules += (
-            f"### Day {total_days}: Morning Wrap-Up & Return Journey\n"
-            f"- **Morning Plan**: Hotel check-out, breakfast, and last-minute local shopping or sightseeing.\n"
-            f"- **Airport Transfer**: Cab back to airport with typical fare.\n"
-            f"- **Available Return Flights ({dest} ➔ {dep_station})**: Show return flight options with timings, airline, and prices.\n\n"
-        )
-
-    prompt = (
-        f"You are the Synthesis Agent for PlanMyTrip AI. You are a dedicated travel planner, NOT a budget accountant.\n"
-        f"Construct a rich, practical, chronologically structured day-by-day travel itinerary for {travelers} traveler{'s' if travelers > 1 else ''}.\n\n"
-        f"Trip Specs:\n"
-        f"- Origin / Departure City: {dep_station}\n"
-        f"- Destination: {dest}\n"
-        f"- Number of Travelers: {travelers}\n"
-        f"- Trip Duration: {total_days} Days\n"
-        f"- Travel Dates: {start_d} to {end_d}\n\n"
-        f"Data Gathered by Worker Agents:\n"
-        f"AVAILABLE OUTBOUND FLIGHTS (Day 1):\n{outbound_flights_text or '  * Scheduled flights from ' + dep_station + ' to ' + dest}\n\n"
-        f"AVAILABLE HOTELS TO STAY & REST:\n{hotels_text or '  * Handpicked hotels in ' + dest}\n\n"
-        f"PLACES & ZONES TO VISIT:\n{places_summary_text}\n\n"
-        f"TRANSIT & LOCAL TRAVEL GUIDANCE:\n"
-        f"- Easiest way: {easiest_transit}\n"
-        f"- Rental / Chauffeur car rate: {rental_car_rate}\n"
-        f"- Scooter/bike: {rental_scooter_rate}\n"
-        f"- Taxi guidance: {taxi_guidance}\n"
-        f"- Stay strategy: {stay_strategy_text}\n\n"
-        f"AVAILABLE RETURN FLIGHTS (Day {total_days}):\n{return_flights_text or '  * Scheduled return flights to ' + dep_station}\n\n"
-        f"MANDATORY DYNAMIC DAY-BY-DAY FORMAT RULES:\n"
-        f"CRITICAL: The user has booked a {total_days}-Day trip. You MUST generate an individual '### Day X: ...' section for EVERY SINGLE DAY from Day 1 to Day {total_days}. Do NOT skip any day, do NOT combine days, and do NOT stop before Day {total_days}.\n\n"
-        f"{day_format_rules}"
-        f"### 💰 Estimated Trip Cost Breakdown\n"
-        f"CRITICAL RULES FOR TRIP COST:\n"
-        f"1. We are a travel planner, NOT an accountant or budget calculator. Do NOT calculate 'Remaining Budget' or 'Remaining Balance'.\n"
-        f"2. NEVER do arithmetic addition in front of the user (STRICTLY PROHIBITED: do NOT write equations or formulas like '₹A (Flights) + ₹B (Hotels) + ... = ₹Total').\n"
-        f"3. We cannot provide a rigid or perfect total. Instead, present realistic indicative average costs for each category, followed by an overall indicative average total cost:\n"
-        f"   - **Roundtrip Flights (for {travelers})**: ~₹... (indicative estimate for outbound and return)\n"
-        f"   - **Accommodation (Total Stay for {total_days} nights)**: ~₹... (indicative estimate for recommended stay)\n"
-        f"   - **Local Transit & Transfers**: ~₹... (indicative estimate for cabs and local sightseeing transit)\n"
-        f"   - **Dining & Activities**: ~₹... (realistic average for {travelers} traveler{'s' if travelers > 1 else ''})\n"
-        f"   - **Estimated Average Total Trip Cost**: ~₹... (approximate average cost for the entire trip; do NOT show any addition formula or sum equation)\n"
-        f"4. Include a brief note explaining that figures are indicative averages in INR (₹) and actual expenses vary based on booking time, chosen hotel tier, and dining choices.\n"
-        f"Conclude warmly with a short wishing note for their trip."
+    system_prompt = (
+        f"You are the senior synthesis agent for PlanMyTrip AI. You are generating a complete {total_days}-Day day-by-day travel itinerary.\n"
+        f"CRITICAL REQUIREMENT: You MUST generate exactly {total_days} DayActivityPlan objects in day_plans (Day 1 through Day {total_days}).\n"
+        f"It is strictly forbidden to output fewer than {total_days} days. Do not truncate after Day 1."
     )
 
+    user_prompt = (
+        f"Trip Specs:\n"
+        f"- Origin: {clean_origin}\n"
+        f"- Destination: {clean_dest}\n"
+        f"- Travelers: {travelers}\n"
+        f"- Duration: {total_days} Days / {total_nights} Nights\n"
+        f"- Dates: {start_d} to {end_d}\n"
+        f"- Budget Tier: {budget_tier_literal}\n\n"
+        f"Available Flights from Origin ({clean_origin} ➔ {clean_dest}):\n{flight_text_summary}\n\n"
+        f"Available Accommodation in {clean_dest}:\n{hotel_text_summary}\n\n"
+        f"Key Sights & Zones in {clean_dest}:\n"
+        f"{places_summary_text or '- Historic UNESCO landmarks, cultural heritage, and local artisan markets.'}\n\n"
+        f"Transit Guidance: {easiest_transit}. {taxi_guidance}\n"
+        f"Stay Strategy: {stay_strategy_text}\n\n"
+        f"MANDATORY REQUIREMENT:\n"
+        f"You MUST generate exactly {total_days} items in the day_plans list:\n"
+        f"{day_reqs}\n"
+        f"Make sure every day has rich morning, afternoon, evening activities, transport_mode, and stay_area."
+    )
+
+    parsed_itinerary: StructuredItinerary | None = None
     try:
-        response = await client.chat.completions.create(
+        completion = await client.beta.chat.completions.parse(
             model=settings.OPENAI_MODEL_WORKER,
             messages=[
-                {"role": "system", "content": "You are a professional travel planner specializing in Indian and global travel planning in Indian Rupees (INR). Provide clear, beautiful Markdown itineraries without budget accounting subtraction."},
-                {"role": "user", "content": prompt},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
             ],
-            max_tokens=settings.OPENAI_MAX_TOKENS_WORKER,
-            temperature=0.3,
+            response_format=StructuredItinerary,
+            temperature=0.2,
         )
-        draft = response.choices[0].message.content or ""
-        if not draft:
-            raise ValueError("Empty response from worker model")
+        parsed_itinerary = completion.choices[0].message.parsed
     except Exception:
-        fallback_intermediate = ""
-        for day_num in range(2, total_days):
-            zone_idx = (day_num - 2) % len(zones_list) if zones_list else 0
-            curr_zone = zones_list[zone_idx] if zones_list else {}
-            curr_z_name = curr_zone.get("zone_name", f"Scenic & Cultural Exploration (Part {day_num - 1})")
-            curr_z_places = curr_zone.get("places", [f"Explore top landmarks and scenic sights of {dest}"])
-            curr_z_stay = curr_zone.get("recommended_stay_area", "Primary hotel")
-            places_bullets = "\n".join([f"* {p}" for p in curr_z_places])
-            fallback_intermediate += (
-                f"---\n\n"
-                f"### Day {day_num}: {curr_z_name}\n\n"
-                f"📍 **Places to Visit & Activities:**\n"
-                f"{places_bullets}\n\n"
-                f"🚗 **How to Visit & Easiest Transport:**\n"
-                f"* **{easiest_transit}**\n"
-                f"* Local Transit & Cabs: {taxi_guidance}\n\n"
-                f"🏨 **Where to Stay Tonight:**\n"
-                f"* Recommended stay area: {curr_z_stay}\n\n"
+        pass
+
+    target_stay = state.get("target_stay_neighborhood") or "Central District"
+
+    raw_plans = list(parsed_itinerary.day_plans) if parsed_itinerary and parsed_itinerary.day_plans else []
+    day_map = {p.day_number: p for p in raw_plans}
+
+    final_day_plans: list[DayActivityPlan] = []
+    for d_num in range(1, total_days + 1):
+        if d_num in day_map:
+            p = day_map[d_num]
+            if d_num == 1:
+                stay_note = f"{target_stay}, {clean_dest}"
+            elif d_num == total_days:
+                stay_note = f"Departure Airport / {clean_origin} (Hotel check-out completed in morning)"
+            else:
+                stay_note = f"Your hotel in {target_stay}, {clean_dest} (Luggage stays in room - no hotel change needed)"
+
+            final_day_plans.append(
+                DayActivityPlan(
+                    day_number=d_num,
+                    day_theme=p.day_theme,
+                    morning=p.morning,
+                    afternoon=p.afternoon,
+                    evening=p.evening,
+                    transport_mode=p.transport_mode,
+                    stay_area=stay_note,
+                )
             )
+        else:
+            if d_num == 1:
+                final_day_plans.append(
+                    DayActivityPlan(
+                        day_number=1,
+                        day_theme="Arrival, Check-in & Scenic Relaxation",
+                        morning=f"Arrival in {clean_dest}, private airport cab transfer to hotel.",
+                        afternoon="Hotel check-in, unpack, freshen up, and enjoy a relaxed local lunch.",
+                        evening="Leisurely stroll through local promenade or hotel lounge followed by dinner.",
+                        transport_mode="Prepaid airport cab or app cab directly to hotel.",
+                        stay_area=f"{target_stay}, {clean_dest}",
+                    )
+                )
+            elif d_num == total_days:
+                final_day_plans.append(
+                    DayActivityPlan(
+                        day_number=d_num,
+                        day_theme="Morning Bazaars, Wrap-Up & Return Journey",
+                        morning="Leisurely breakfast, check-out, and final souvenir shopping at local markets.",
+                        afternoon="Lunch at a renowned cafe followed by cab transfer to airport departure terminal.",
+                        evening=f"Board scheduled evening return flight back to {clean_origin}.",
+                        transport_mode="Hired cab to airport departure terminal.",
+                        stay_area=f"Departure Airport / {clean_origin} (Hotel check-out completed in morning)",
+                    )
+                )
+            else:
+                z_idx = (d_num - 2) % len(zones_list) if zones_list else 0
+                curr_zone = zones_list[z_idx] if zones_list else {}
+                z_name = curr_zone.get("zone_name", f"Scenic & Cultural Highlights (Part {d_num - 1})")
+                z_places = curr_zone.get("places", [f"Explore top landmarks and scenic sights of {clean_dest}"])
+                p_str = ", ".join([str(p) for p in z_places[:3]])
+                final_day_plans.append(
+                    DayActivityPlan(
+                        day_number=d_num,
+                        day_theme=z_name,
+                        morning=f"Morning visit to top landmarks and heritage sites: {p_str}.",
+                        afternoon="Relish authentic regional cuisine and local delicacies for lunch.",
+                        evening="Sunset viewing, vibrant evening promenades, and dinner at a top restaurant.",
+                        transport_mode="Dedicated chauffeur cab or full-day taxi rental.",
+                        stay_area=f"Your hotel in {target_stay}, {clean_dest} (Luggage stays in room - no hotel change needed)",
+                    )
+                )
 
-        draft = (
-            f"### Proposed {dest} Travel Itinerary ({travelers} Traveler{'s' if travelers > 1 else ''})\n\n"
-            f"**Travel Dates:** {start_d} to {end_d} ({total_days} Days)\n\n"
-            f"---\n\n"
-            f"### Day 1: Arrival, Transfers & Settling In\n\n"
-            f"✈️ **Available Outbound Flights ({dep_station} ➔ {dest}):**\n"
-            f"{outbound_flights_text}\n"
-            f"🚖 **Airport Transfer:** Easiest option is a prepaid airport taxi counter or app cab directly to your hotel (~{taxi_guidance}).\n\n"
-            f"🏨 **Available Nearby Hotels to Stay & Rest:**\n"
-            f"{hotels_text}\n"
-            f"🌅 **Evening Relaxation:** Check-in, refresh at the hotel pool or spa, and enjoy fine dining.\n\n"
-            f"{fallback_intermediate}"
-            f"---\n\n"
-            f"### Day {total_days}: Morning Wrap-Up & Return Journey\n\n"
-            f"🛍️ **Morning:** Leisurely breakfast, hotel check-out, and local market souvenir stop.\n"
-            f"🚕 **Airport Transfer:** Hired cab to airport.\n\n"
-            f"✈️ **Available Return Flights ({dest} ➔ {dep_station}):**\n"
-            f"{return_flights_text}\n\n"
-            f"---\n\n"
-            f"### 💰 Estimated Trip Cost Breakdown\n"
-            f"- **Roundtrip Flights (for {travelers})**: ~{budget_result.allocated_flights.to_formatted_str()}\n"
-            f"- **Accommodation**: ~{budget_result.allocated_hotels.to_formatted_str()}\n"
-            f"- **Local Transit & Transfers**: ~{budget_result.allocated_activities.to_formatted_str()}\n"
-            f"- **Estimated Average Total Trip Cost**: ~**{budget_result.committed_total.to_formatted_str()}**\n\n"
-            f"*Note: All figures are indicative average estimates in Indian Rupees (₹ INR) to assist with planning. Actual expenses vary based on specific bookings, seasonality, and personal choices.*"
-        )
+    final_day_plans.sort(key=lambda x: x.day_number)
 
-    verdict = evaluate_output_guardrail(draft)
+    trip_title = (
+        parsed_itinerary.trip_title
+        if parsed_itinerary and parsed_itinerary.trip_title
+        else f"{clean_dest} Getaway: Culture & Exploration"
+    )
+
+    closing_note = (
+        parsed_itinerary.closing_note
+        if parsed_itinerary and parsed_itinerary.closing_note
+        else f"Wishing you an unforgettable, serene vacation in {clean_dest}!"
+    )
+
+    structured_itinerary = StructuredItinerary(
+        trip_title=trip_title,
+        dates_formatted=f"{start_d} to {end_d}",
+        duration_label=f"{total_days} Days / {total_nights} Nights",
+        origin=clean_origin,
+        destination=clean_dest,
+        gateway_note=None,
+        flights=flight_items,
+        return_flights=ret_items,
+        hotels=hotel_items,
+        day_plans=final_day_plans,
+        cost_breakdown=cost_breakdown_obj,
+        closing_note=closing_note,
+    )
+
+    rendered_markdown = render_itinerary_markdown(structured_itinerary, budget_data)
+
+    verdict = evaluate_output_guardrail(rendered_markdown)
     if not verdict.allowed:
-        draft = "Itinerary output failed safety evaluation. Please review requirements and try again."
+        rendered_markdown = "Itinerary output failed safety evaluation. Please review requirements and try again."
 
     return {
         "budget_reconciliation": budget_result,
-        "itinerary_draft": draft,
-        "messages": [AIMessage(content=draft)],
+        "itinerary_draft": rendered_markdown,
+        "messages": [AIMessage(content=rendered_markdown)],
         "next_step": "complete",
     }
