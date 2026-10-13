@@ -252,7 +252,7 @@ async def chat_stream(
                             elif eval_data.is_complete:
                                 yield {
                                     "event": "status",
-                                    "data": json.dumps({"step": "intake_complete", "message": "All trip parameters confirmed! Researching flights, stays, and activities..."}),
+                                    "data": json.dumps({"step": "intake_complete", "message": "Planning your trip..."}),
                                 }
                     elif node_name == "workers_orchestrator":
                         fl_opts = node_update.get("flight_options", [])
@@ -283,7 +283,7 @@ async def chat_stream(
                         }
                         yield {
                             "event": "status",
-                            "data": json.dumps({"step": "synthesizing", "message": "Drafting your complete daily itinerary..."}),
+                            "data": json.dumps({"step": "synthesizing", "message": "Planning your trip..."}),
                         }
                     elif node_name in ["flight_agent", "hotel_agent", "places_agent", "itinerary_agent"]:
                         serialized: dict[str, object] = {}
