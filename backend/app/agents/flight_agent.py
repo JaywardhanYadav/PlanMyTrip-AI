@@ -1,6 +1,7 @@
 import re
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
+from typing import cast, Literal
 from typing_extensions import TypedDict
 from ..core.money import Money
 from ..core.state import FlightLeg, FlightOption, PlanMyTripState
@@ -137,7 +138,7 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
                         legs=legs,
                         fare=Money(amount=total_fare, currency=curr),
                         is_estimate=bool(item.get("is_estimate", False)),
-                        source_provenance=prov_val,
+                        source_provenance=cast(Literal["aviationstack", "flightapi", "tavily", "cached"], prov_val),
                         source_citation=str(item.get("source_citation", "https://www.flightapi.io")),
                     )
                 )
@@ -281,7 +282,7 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
                         legs=legs,
                         fare=Money(amount=total_fare, currency=curr),
                         is_estimate=bool(item.get("is_estimate", False)),
-                        source_provenance=prov_val,
+                        source_provenance=cast(Literal["aviationstack", "flightapi", "tavily", "cached"], prov_val),
                         source_citation=str(item.get("source_citation", "https://www.flightapi.io")),
                     )
                 )

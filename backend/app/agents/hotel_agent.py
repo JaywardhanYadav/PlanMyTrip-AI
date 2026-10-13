@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import cast, Literal
 from ..core.money import Money
 from ..core.state import HotelOption, PlanMyTripState
 from ..mcp_client.registry import MCPRegistry
@@ -419,7 +420,7 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
                         nightly_rate=Money(amount=nightly_dec, currency=curr),
                         total_rate=Money(amount=total_dec, currency=curr),
                         cancellation_terms=amenities,
-                        source_provenance=prov_val,
+                        source_provenance=cast(Literal["serpapi", "tavily", "cached"], prov_val),
                         source_citation=str(item.get("source_citation", "https://www.google.com/travel/hotels")),
                     )
                 )

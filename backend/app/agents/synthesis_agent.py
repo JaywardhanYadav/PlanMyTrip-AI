@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 from langchain_core.messages import AIMessage
 from pydantic import BaseModel, ConfigDict, Field
 from ..core.config import get_openai_client, get_settings
@@ -423,7 +423,9 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
 
     target_stay = state.get("target_stay_neighborhood") or "Central District"
 
-    raw_plans = list(parsed_itinerary.day_plans) if parsed_itinerary and parsed_itinerary.day_plans else []
+    raw_plans: list[DayActivityPlan] = []
+    if parsed_itinerary is not None:
+        raw_plans = list(parsed_itinerary.day_plans)
     day_map = {p.day_number: p for p in raw_plans}
 
     hub_schedule = build_circuit_hub_schedule(
