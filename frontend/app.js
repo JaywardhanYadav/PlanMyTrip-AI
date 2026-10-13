@@ -225,27 +225,63 @@ function updateAgentStatus(agent, subtitle, percent) {
   }
 }
 
+function ensureProgressBox(messageDiv) {
+  let box = messageDiv.querySelector(".agent-planning-progress-box");
+  if (!box) {
+    messageDiv.innerHTML = `
+      <div class="agent-planning-progress-box" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; font-size: 0.92rem; line-height: 1.6;">
+        <div style="font-weight: 600; margin-bottom: 10px; color: #818cf8; display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #818cf8; box-shadow: 0 0 10px #818cf8;"></span>
+          Coordinating Travel Specialists...
+        </div>
+        <div id="prog-flight" style="padding: 3px 0; color: #94a3b8;">✈️ Finding live flight routes & fares... <span class="p-badge" style="color: #f59e0b;">⏳ Searching</span></div>
+        <div id="prog-places" style="padding: 3px 0; color: #94a3b8;">📍 Mapping sights, culture & stay zone... <span class="p-badge" style="color: #f59e0b;">⏳ Mapping</span></div>
+        <div id="prog-hotels" style="padding: 3px 0; color: #94a3b8;">🏨 Searching verified hotels in zone... <span class="p-badge" style="color: #f59e0b;">⏳ Searching</span></div>
+        <div id="prog-weather" style="padding: 3px 0; color: #94a3b8;">⛅ Verifying seasonal climate... <span class="p-badge" style="color: #f59e0b;">⏳ Checking</span></div>
+        <div id="prog-cost" style="padding: 3px 0; color: #94a3b8;">💰 Calculating direct trip costs... <span class="p-badge" style="color: #f59e0b;">⏳ Waiting</span></div>
+      </div>
+    `;
+    box = messageDiv.querySelector(".agent-planning-progress-box");
+  }
+  return box;
+}
+
 function handleSSEEvent(type, data, messageDiv) {
   if (type === "status") {
-    if (data.message && data.step !== "planning_started") {
-      messageDiv.innerText = `⏳ ${data.message}`;
+    if (data.step === "planning_started" || (data.message && data.message.includes("planning"))) {
+      ensureProgressBox(messageDiv);
+    } else if (data.message && !data.message.includes("got all") && !data.message.includes("slots")) {
+      const box = messageDiv.querySelector(".agent-planning-progress-box");
+      if (!box) {
+        messageDiv.innerText = data.message;
+      }
     }
   } else if (type === "guardrail") {
     if (!data.allowed) {
       messageDiv.innerHTML = `<span style="color: var(--accent-danger);">⚠️ Request Rejected: ${escapeHtml(data.reason)}</span>`;
     }
   } else if (type === "node_update") {
+    ensureProgressBox(messageDiv);
     const node = data.node;
     const update = data.update;
 
-    if (node === "flight_agent" && update.flight_options) {
-      currentOptions.flights = update.flight_options;
+    if (node === "flight_agent" || (update && update.flight_options)) {
+      const el = messageDiv.querySelector("#prog-flight");
+      if (el) el.innerHTML = `✈️ Live flights & fares <span style="color: #10b981; font-weight: 600;">✅ Found</span>`;
       updateAgentStatus("flight", "Flights discovered & ranked", "100%");
-    } else if (node === "hotel_agent" && update.hotel_options) {
-      currentOptions.hotels = update.hotel_options;
+    }
+    if (node === "places_agent" || (update && update.places_data)) {
+      const el = messageDiv.querySelector("#prog-places");
+      if (el) el.innerHTML = `📍 Attractions & stay district <span style="color: #10b981; font-weight: 600;">✅ Mapped</span>`;
+    }
+    if (node === "hotel_agent" || (update && update.hotel_options)) {
+      const el = messageDiv.querySelector("#prog-hotels");
+      if (el) el.innerHTML = `🏨 Verified Google Hotels <span style="color: #10b981; font-weight: 600;">✅ Found</span>`;
       updateAgentStatus("hotel", "Hotels selected within budget", "100%");
-    } else if (node === "itinerary_agent" && update.activity_options) {
-      currentOptions.activities = update.activity_options;
+    }
+    if (node === "itinerary_agent" || (update && update.weather_outlook)) {
+      const el = messageDiv.querySelector("#prog-weather");
+      if (el) el.innerHTML = `⛅ Seasonal climate normals <span style="color: #10b981; font-weight: 600;">✅ Verified</span>`;
       updateAgentStatus("itinerary", "Day-wise activities scheduled", "95%");
     }
   } else if (type === "intake_update") {
@@ -253,7 +289,21 @@ function handleSSEEvent(type, data, messageDiv) {
       loadTrips();
     }
   } else if (type === "synthesis") {
-    messageDiv.innerHTML = formatMarkdown(data.draft);
+    const elCost = messageDiv.querySelector("#prog-cost");
+    if (elCost) elCost.innerHTML = `💰 Direct cost breakdown <span style="color: #10b981; font-weight: 600;">✅ Reconciled</span>`;
+
+    const elHeader = messageDiv.querySelector(".agent-planning-progress-box div:first-child");
+    if (elHeader) {
+      elHeader.innerHTML = `<span style="color: #10b981; font-weight: 600;">✅ Travel Plan Successfully Generated</span>`;
+    }
+
+    const box = messageDiv.querySelector(".agent-planning-progress-box");
+    const formattedDraft = formatMarkdown(data.draft);
+    if (box) {
+      messageDiv.innerHTML = box.outerHTML + `<div style="margin-top: 16px;">${formattedDraft}</div>`;
+    } else {
+      messageDiv.innerHTML = formattedDraft;
+    }
     updateAgentStatus("itinerary", "Itinerary completed", "100%");
   } else if (type === "interrupt") {
     const panel = document.getElementById("hitl-panel");
