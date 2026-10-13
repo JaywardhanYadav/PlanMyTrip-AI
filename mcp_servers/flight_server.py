@@ -3,8 +3,11 @@ import sys
 from decimal import Decimal
 from typing import Any
 import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+
+load_dotenv()
 
 app = FastAPI(title="PlanMyTrip MCP Flight Server")
 
@@ -162,7 +165,13 @@ async def _fetch_from_flightapi(
 
         itineraries = data.get("itineraries", [])
         legs_dict = {str(leg.get("id")): leg for leg in data.get("legs", []) if isinstance(leg, dict)}
-        carriers_dict = {str(c.get("id")): str(c.get("name", "Airlines")) for c in data.get("carriers", []) if isinstance(c, dict)}
+        carriers_dict: dict[str, tuple[str, str]] = {}
+        for c in data.get("carriers", []):
+            if isinstance(c, dict):
+                cid = str(c.get("id"))
+                cname = str(c.get("name", "Scheduled Carrier"))
+                ccode = str(c.get("display_code", "6E"))
+                carriers_dict[cid] = (cname, ccode)
 
         results: list[FlightOptionResult] = []
         seen_carriers: set[str] = set()
@@ -188,21 +197,22 @@ async def _fetch_from_flightapi(
             leg_obj = legs_dict.get(str(leg_ids[0])) if leg_ids else None
 
             carrier_name = "Scheduled Carrier"
+            c_code = "6E"
             dep_time_str = f"{departure_date}T08:00:00Z"
             arr_time_str = f"{departure_date}T10:00:00Z"
             duration = 120
-            c_code = "6E"
             fl_num = "Flight"
 
             if leg_obj and isinstance(leg_obj, dict):
                 c_ids = leg_obj.get("operating_carrier_ids") or leg_obj.get("marketing_carrier_ids") or []
                 if c_ids and str(c_ids[0]) in carriers_dict:
-                    carrier_name = carriers_dict[str(c_ids[0])]
+                    carrier_name, c_code = carriers_dict[str(c_ids[0])]
 
-                dep_time_str = str(leg_obj.get("departure_time", dep_time_str))
-                arr_time_str = str(leg_obj.get("arrival_time", arr_time_str))
+                dep_time_str = str(leg_obj.get("departure") or leg_obj.get("departure_time") or dep_time_str)
+                arr_time_str = str(leg_obj.get("arrival") or leg_obj.get("arrival_time") or arr_time_str)
                 duration = int(leg_obj.get("duration", duration))
-                fl_num = str(leg_obj.get("flight_number") or leg_obj.get("segment_ids", ["Flight"])[0])
+                fl_num = f"{c_code} Scheduled Flight"
+
 
             c_key = carrier_name.lower()
             if any(k in c_key for k in seen_carriers):
