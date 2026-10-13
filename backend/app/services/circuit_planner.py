@@ -322,14 +322,14 @@ def build_circuit_hub_schedule(
 
 def sanitize_markdown_text(text: str) -> str:
     cleaned = text
+    cleaned = re.sub(r"(?m)^\s*#+\s*", "", cleaned)
     cleaned = re.sub(r"-\s*\n+-\s*", "- ", cleaned)
     cleaned = re.sub(r"\n+-\s*\n+", "\n", cleaned)
     cleaned = re.sub(r"(?m)^(?:\s*-\s*)?(?!\*\*Return Option\s*\d+:\*\*)\*?Return Option\s*(\d+):(?:\s*\*)?\s*", r"- **Return Option \1:** ", cleaned)
     cleaned = re.sub(r"(?m)^(?:\s*-\s*)?(?!\*\*Option\s*\d+:\*\*)\*?Option\s*(\d+):(?:\s*\*)?\s*", r"- **Option \1:** ", cleaned)
     cleaned = re.sub(r"~\s*\*", "", cleaned)
     cleaned = re.sub(r"\*~", "", cleaned)
-    cleaned = re.sub(r"Total Trip Cost:\s*~\s*\*+", "Total Trip Cost: ~", cleaned)
-    cleaned = re.sub(r"Total Trip Cost:\s*\*+", "Total Trip Cost: ", cleaned)
+    cleaned = re.sub(r"~\s*~+", "~", cleaned)
     cleaned = re.sub(r"\*₹", "₹", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     return cleaned.strip()

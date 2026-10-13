@@ -92,10 +92,10 @@ def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: Multi
 
     parts: list[str] = []
 
-    parts.append(f"# {itinerary.trip_title}")
+    parts.append(f"**{itinerary.trip_title}**")
     parts.append(f"**Travel Dates:** {itinerary.dates_formatted} ({itinerary.duration_label})")
     if clean_ret_origin and clean_ret_origin.lower() != clean_dest.lower():
-        parts.append(f"**Route:** {clean_origin} ➔ {clean_dest} (Return departure via {clean_ret_origin})")
+        parts.append(f"**Route:** {clean_origin} ➔ {clean_dest} (Return from {clean_ret_origin})")
     else:
         parts.append(f"**Route:** {clean_origin} ➔ {clean_dest}")
     parts.append("")
@@ -103,9 +103,7 @@ def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: Multi
     parts.append("")
 
     if itinerary.flights:
-        parts.append("### ✈️ Outbound Travel Logistics (Arrival Flights)")
-        parts.append("")
-        parts.append(f"#### 🛫 Available Outbound Flights ({clean_origin} ➔ {clean_dest}):")
+        parts.append(f"✈️ **Flight Options ({clean_origin} to {clean_dest}):**")
         for idx, f in enumerate(itinerary.flights, 1):
             parts.append(f"- **Option {idx}:** **{f.carrier}** ({f.service_type}) | Timings: {f.timing} | ₹{f.price_per_person_inr:,.0f} per person (Total: ₹{f.total_price_inr:,.0f} for {budget_data.travelers_count} travelers)")
         parts.append("")
@@ -113,7 +111,7 @@ def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: Multi
         parts.append("")
 
     if itinerary.hotels:
-        parts.append("### 🏨 Handpicked Accommodations & Hub Stays")
+        parts.append("🏨 **Places to Stay (Hotels):**")
         for idx, h in enumerate(itinerary.hotels, 1):
             clean_loc = re.sub(r"\s*\([A-Z]{3}\)", "", h.location).strip()
             clean_hname = re.sub(r"\s*\([A-Z]{3}\)", "", h.name).strip()
@@ -122,74 +120,72 @@ def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: Multi
         parts.append("---")
         parts.append("")
 
-    parts.append("### 📅 Day-by-Day Itinerary")
+    parts.append("📅 **Day-by-Day Plan:**")
     parts.append("")
 
     for plan in itinerary.day_plans:
-        parts.append(f"#### Day {plan.day_number}: {plan.day_theme}")
+        parts.append(f"**Day {plan.day_number}: {plan.day_theme}**")
         parts.append(f"🌅 **Morning:** {plan.morning}")
         parts.append(f"☀️ **Afternoon:** {plan.afternoon}")
         parts.append(f"🌆 **Evening:** {plan.evening}")
-        parts.append(f"🚗 **Local Transport & Transfers:** {plan.transport_mode}")
-        parts.append(f"📍 **Where to Stay Tonight:** {plan.stay_area}")
+        parts.append(f"🚗 **Transport:** {plan.transport_mode}")
+        parts.append(f"📍 **Stay Tonight:** {plan.stay_area}")
         parts.append("")
         parts.append("---")
         parts.append("")
 
     if itinerary.return_flights:
-        parts.append("### 🛬 Return Travel Logistics (Departure Journey)")
-        parts.append("")
-        parts.append(f"#### Available Return Flights ({clean_ret_origin} ➔ {clean_origin}):")
+        parts.append(f"🛬 **Return Flights ({clean_ret_origin} to {clean_origin}):**")
         for idx, rf in enumerate(itinerary.return_flights, 1):
             parts.append(f"- **Return Option {idx}:** **{rf.carrier}** ({rf.service_type}) | Timings: {rf.timing} | ₹{rf.price_per_person_inr:,.0f} per person (Total: ₹{rf.total_price_inr:,.0f} for {budget_data.travelers_count} travelers)")
         parts.append("")
         parts.append("---")
         parts.append("")
 
-    parts.append("### 💰 Estimated Trip Cost Breakdown")
+    parts.append("💰 **Estimated Trip Cost:**")
     parts.append("")
 
     if budget_data.budget_tier_specified == "unspecified":
-        parts.append("Since an exact budget was not specified, here are realistic average estimates across 3 standard travel tiers:")
+        parts.append("Here are realistic average cost estimates across 3 standard travel styles:")
         parts.append("")
 
         b_tier = budget_data.budget_tier
-        parts.append(f"#### 🏷️ 1. {b_tier.tier_name} (Smart Economy)")
+        parts.append("🏷️ **1. Budget (Economy):**")
         parts.append(f"- **Travel Style:** {b_tier.description}")
         parts.append(f"- **Roundtrip Flights:** ~{b_tier.total_flights_cost.to_formatted_str()} (for all {budget_data.travelers_count} travelers)")
-        parts.append(f"- **Accommodation ({budget_data.duration_nights} nights):** ~{b_tier.total_hotel_cost.to_formatted_str()} ({b_tier.hotel_tier_name})")
-        parts.append(f"- **Local Transit & Transfers:** ~{b_tier.total_transit_cost.to_formatted_str()}")
-        parts.append(f"- **Dining & Daily Expenses:** ~{b_tier.total_dining_cost.to_formatted_str()}")
-        parts.append(f"- **Estimated Average Total Trip Cost:** ~**{b_tier.total_trip_cost.to_formatted_str()}**")
+        parts.append(f"- **Hotels ({budget_data.duration_nights} nights):** ~{b_tier.total_hotel_cost.to_formatted_str()} ({b_tier.hotel_tier_name})")
+        parts.append(f"- **Local Transport:** ~{b_tier.total_transit_cost.to_formatted_str()}")
+        parts.append(f"- **Food & Daily Expenses:** ~{b_tier.total_dining_cost.to_formatted_str()}")
+        parts.append(f"- **Estimated Total Cost:** ~{b_tier.total_trip_cost.to_formatted_str()}")
         parts.append("")
 
         m_tier = budget_data.mid_range_tier
-        parts.append(f"#### 🏷️ 2. {m_tier.tier_name} (Comfort & Boutique)")
+        parts.append("🏷️ **2. Mid-Range (Comfort):**")
         parts.append(f"- **Travel Style:** {m_tier.description}")
         parts.append(f"- **Roundtrip Flights:** ~{m_tier.total_flights_cost.to_formatted_str()} (for all {budget_data.travelers_count} travelers)")
-        parts.append(f"- **Accommodation ({budget_data.duration_nights} nights):** ~{m_tier.total_hotel_cost.to_formatted_str()} ({m_tier.hotel_tier_name})")
-        parts.append(f"- **Local Transit & Transfers:** ~{m_tier.total_transit_cost.to_formatted_str()}")
-        parts.append(f"- **Dining & Daily Expenses:** ~{m_tier.total_dining_cost.to_formatted_str()}")
-        parts.append(f"- **Estimated Average Total Trip Cost:** ~**{m_tier.total_trip_cost.to_formatted_str()}**")
+        parts.append(f"- **Hotels ({budget_data.duration_nights} nights):** ~{m_tier.total_hotel_cost.to_formatted_str()} ({m_tier.hotel_tier_name})")
+        parts.append(f"- **Local Transport:** ~{m_tier.total_transit_cost.to_formatted_str()}")
+        parts.append(f"- **Food & Daily Expenses:** ~{m_tier.total_dining_cost.to_formatted_str()}")
+        parts.append(f"- **Estimated Total Cost:** ~{m_tier.total_trip_cost.to_formatted_str()}")
         parts.append("")
 
         l_tier = budget_data.luxury_tier
-        parts.append(f"#### 🏷️ 3. {l_tier.tier_name} (5-Star & Heritage Palace)")
+        parts.append("🏷️ **3. Luxury (5-Star & Premium):**")
         parts.append(f"- **Travel Style:** {l_tier.description}")
         parts.append(f"- **Roundtrip Flights:** ~{l_tier.total_flights_cost.to_formatted_str()} (for all {budget_data.travelers_count} travelers)")
-        parts.append(f"- **Accommodation ({budget_data.duration_nights} nights):** ~{l_tier.total_hotel_cost.to_formatted_str()} ({l_tier.hotel_tier_name})")
-        parts.append(f"- **Local Transit & Transfers:** ~{l_tier.total_transit_cost.to_formatted_str()}")
-        parts.append(f"- **Dining & Daily Expenses:** ~{l_tier.total_dining_cost.to_formatted_str()}")
-        parts.append(f"- **Estimated Average Total Trip Cost:** ~**{l_tier.total_trip_cost.to_formatted_str()}**")
+        parts.append(f"- **Hotels ({budget_data.duration_nights} nights):** ~{l_tier.total_hotel_cost.to_formatted_str()} ({l_tier.hotel_tier_name})")
+        parts.append(f"- **Local Transport:** ~{l_tier.total_transit_cost.to_formatted_str()}")
+        parts.append(f"- **Food & Daily Expenses:** ~{l_tier.total_dining_cost.to_formatted_str()}")
+        parts.append(f"- **Estimated Total Cost:** ~{l_tier.total_trip_cost.to_formatted_str()}")
         parts.append("")
     else:
         rec = budget_data.recommended_tier
-        parts.append(f"#### 🏷️ {rec.tier_name} ({rec.description})")
+        parts.append(f"🏷️ **{rec.tier_name}:**")
         parts.append(f"- **Roundtrip Flights:** ~{rec.total_flights_cost.to_formatted_str()} (for all {budget_data.travelers_count} travelers)")
-        parts.append(f"- **Accommodation ({budget_data.duration_nights} nights):** ~{rec.total_hotel_cost.to_formatted_str()} ({rec.hotel_tier_name})")
-        parts.append(f"- **Local Transit & Transfers:** ~{rec.total_transit_cost.to_formatted_str()}")
-        parts.append(f"- **Dining & Daily Expenses:** ~{rec.total_dining_cost.to_formatted_str()}")
-        parts.append(f"- **Estimated Average Total Trip Cost:** ~**{rec.total_trip_cost.to_formatted_str()}**")
+        parts.append(f"- **Hotels ({budget_data.duration_nights} nights):** ~{rec.total_hotel_cost.to_formatted_str()} ({rec.hotel_tier_name})")
+        parts.append(f"- **Local Transport:** ~{rec.total_transit_cost.to_formatted_str()}")
+        parts.append(f"- **Food & Daily Expenses:** ~{rec.total_dining_cost.to_formatted_str()}")
+        parts.append(f"- **Estimated Total Cost:** ~{rec.total_trip_cost.to_formatted_str()}")
         parts.append("")
 
     parts.append("*Note: All figures are indicative average estimates in Indian Rupees (₹ INR). Actual booking costs may fluctuate based on seasonal demand and advance reservations.*")
@@ -214,7 +210,7 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
     dest = state.get("destination") or "Gujarat"
     gateway_note = state.get("gateway_note")
     resolved_gateway = state.get("resolved_gateway")
-    display_dest = resolved_gateway or dest
+    display_dest = dest or resolved_gateway
     clean_origin = re.sub(r"\s*\([A-Z]{3}\)", "", dep_station).strip()
     clean_dest = re.sub(r"\s*\([A-Z]{3}\)", "", display_dest).strip()
     start_d = state.get("start_date") or "2026-10-19"
@@ -530,14 +526,7 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
 
     final_day_plans.sort(key=lambda x: x.day_number)
 
-    if parsed_itinerary and parsed_itinerary.trip_title and ("Jaipur" not in parsed_itinerary.trip_title or "RAJASTHAN" not in dest.upper()):
-        trip_title = parsed_itinerary.trip_title
-    elif "RAJASTHAN" in dest.upper():
-        trip_title = f"Royal Rajasthan: {total_days}-Day Journey through Jaipur, Jodhpur & Udaipur"
-    elif "KERALA" in dest.upper():
-        trip_title = f"Kerala Highlights: {total_days}-Day Journey through Kochi, Munnar, Thekkady & Alleppey"
-    else:
-        trip_title = f"{clean_dest} Getaway: Culture & Exploration"
+    trip_title = f"Your Tour Plan for {clean_dest}"
 
     if "RAJASTHAN" in dest.upper():
         closing_note = "Wishing you a royal and unforgettable vacation across Rajasthan!"
