@@ -32,7 +32,7 @@ async def smoke_test() -> None:
         state = await graph.aget_state(config)
         print(f"[*] Graph paused at checkpoint before: {state.next}")
 
-        if "synthesis_agent" in state.next:
+        if any(n in state.next for n in ["synthesis_agent", "final_plan_agent"]):
             print("[*] Resuming past Human-in-the-Loop breakpoint...")
             await graph.aupdate_state(
                 config,

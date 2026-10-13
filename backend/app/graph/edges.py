@@ -21,4 +21,4 @@ def route_supervisor(state: PlanMyTripState) -> str:
     step = state.get("next_step")
     if step == "complete":
         return END
-    return "synthesis_agent"
+    return "final_plan_agent"

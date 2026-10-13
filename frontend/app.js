@@ -274,7 +274,7 @@ function handleSSEEvent(type, data, messageDiv) {
       updateThinkingStatus(messageDiv, "Hotels selected! Scheduling daily itinerary...");
       updateAgentStatus("hotel", "Hotels selected within budget", "100%");
     }
-    if (node === "itinerary_agent" || (update && update.weather_outlook)) {
+    if (node === "itinerary_agent" || node === "day_planner_agent" || (update && update.weather_outlook)) {
       updateThinkingStatus(messageDiv, "Drafting your complete tour plan...");
       updateAgentStatus("itinerary", "Day-wise activities scheduled", "95%");
     }

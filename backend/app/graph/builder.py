@@ -6,9 +6,9 @@ from langgraph.graph import END, START, StateGraph
 from ..agents.flight_agent import flight_agent_node
 from ..agents.hotel_agent import hotel_agent_node
 from ..agents.intake_agent import evaluate_trip_intake
-from ..agents.itinerary_agent import itinerary_agent_node
+from ..agents.day_planner_agent import day_planner_agent_node
 from ..agents.places_agent import places_agent_node
-from ..agents.synthesis_agent import synthesis_agent_node
+from ..agents.final_plan_agent import final_plan_agent_node
 from ..core.money import Money
 from ..core.state import PlanMyTripState
 from ..guardrails.input_guard import evaluate_input_guardrail
@@ -78,23 +78,23 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
 
 
 async def workers_orchestrator_node(state: PlanMyTripState) -> dict[str, object]:
-    flight_res, places_res, itin_res = await asyncio.gather(
+    flight_res, places_res, day_plan_res = await asyncio.gather(
         flight_agent_node(state),
         places_agent_node(state),
-        itinerary_agent_node(state),
+        day_planner_agent_node(state),
     )
 
     stage1_state = dict(state)
     stage1_state.update(flight_res)
     stage1_state.update(places_res)
-    stage1_state.update(itin_res)
+    stage1_state.update(day_plan_res)
 
     hotel_res = await hotel_agent_node(stage1_state)  # type: ignore[arg-type]
 
     combined: dict[str, object] = {}
     combined.update(flight_res)
     combined.update(places_res)
-    combined.update(itin_res)
+    combined.update(day_plan_res)
     combined.update(hotel_res)
     return combined
 
@@ -105,14 +105,15 @@ def build_trip_graph(checkpointer: Any = None) -> Any:
     builder.add_node("input_guard", input_guard_node)
     builder.add_node("intake_supervisor", intake_supervisor_node)
     builder.add_node("workers_orchestrator", workers_orchestrator_node)
-    builder.add_node("synthesis_agent", synthesis_agent_node)
+    builder.add_node("final_plan_agent", final_plan_agent_node)
+    builder.add_node("synthesis_agent", final_plan_agent_node)
 
     builder.add_edge(START, "input_guard")
     builder.add_conditional_edges("input_guard", route_guardrail)
     builder.add_conditional_edges("intake_supervisor", route_intake)
 
-    builder.add_edge("workers_orchestrator", "synthesis_agent")
-    builder.add_edge("synthesis_agent", END)
+    builder.add_edge("workers_orchestrator", "final_plan_agent")
+    builder.add_edge("final_plan_agent", END)
 
     return builder.compile(
         checkpointer=checkpointer,

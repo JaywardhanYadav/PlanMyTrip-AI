@@ -15,7 +15,7 @@
 
 ### 1. Two-Stage Multi-Agent Orchestration (LangGraph)
 Unlike naive single-prompt LLM wrappers, PlanMyTrip AI executes an coordinated 2-stage workflow:
-- **Stage 1 — Parallel Domain Fan-Out**: [FlightAgent](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/flight_agent.py), [PlacesAgent](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/places_agent.py), and [ItineraryAgent](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/itinerary_agent.py) run simultaneously in `asyncio.gather`, querying live flight schedules, daytime sightseeing clusters, and weather outlooks.
+- **Stage 1 — Parallel Domain Fan-Out**: [FlightAgent](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/flight_agent.py), [PlacesAgent](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/places_agent.py), and [DayPlannerAgent](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/day_planner_agent.py) run simultaneously in `asyncio.gather`, querying live flight schedules, daytime sightseeing clusters, and weather outlooks.
 - **Stage 2 — Location-Grounded Hotel & Dining Matching**: [HotelAgent](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/hotel_agent.py) executes **after** PlacesAgent extracts the destination's primary daytime activity hub (`target_stay_neighborhood`). Stays and lunch/dinner recommendations are spatially anchored to where the traveler actually spends their days.
 
 ### 2. Single-Base Stay Strategy (Luggage-Free Precaution)
@@ -25,7 +25,7 @@ When a traveler visits attractions within the same destination or city over mult
 - On **Day $N$**, the itinerary schedules check-out with luggage stored at the hotel concierge until the evening departure flight.
 
 ### 3. Post-Generation Output Guardrail & Verification Loop
-Before final rendering, [synthesis_agent.py](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/synthesis_agent.py) passes the synthesized itinerary through an automated requirement verifier:
+Before final rendering, [final_plan_agent.py](file:///d:/Study/PlanMyTrip-AI/backend/app/agents/final_plan_agent.py) passes the synthesized itinerary through an automated requirement verifier:
 - **Strict $N$-Day Guarantee**: Mathematically verifies that every requested day ($1 \dots N$) is explicitly generated without skipped dates.
 - **Inclusive Calendar Arithmetic**: Correctly calculates $D_{\text{end}} = D_{\text{start}} + N - 1$.
 - **Flight & Stay Alignment**: Ensures Day 1 begins with arrival telemetry and Day $N$ concludes with the verified return flight leg.
@@ -147,12 +147,14 @@ PlanMyTrip-AI/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/
+│   │   │   ├── day_planner_agent.py     # Weather integration & day-by-day outline
+│   │   │   ├── final_plan_agent.py      # Deterministic N-day verifier & final plan
 │   │   │   ├── flight_agent.py          # Flight research & carrier selection
 │   │   │   ├── hotel_agent.py           # Location-grounded hotel & dining agent
 │   │   │   ├── intake_agent.py          # Gateway resolver & date math supervisor
-│   │   │   ├── itinerary_agent.py       # Weather integration & day-by-day outline
+│   │   │   ├── itinerary_agent.py       # Backward-compatible shim -> day_planner_agent
 │   │   │   ├── places_agent.py          # Attractions cluster & target stay neighborhood
-│   │   │   └── synthesis_agent.py       # Deterministic N-day verifier & final synthesis
+│   │   │   └── synthesis_agent.py       # Backward-compatible shim -> final_plan_agent
 │   │   ├── api/
 │   │   │   └── v1/
 │   │   │       ├── auth.py              # User authentication, JWT login & signup

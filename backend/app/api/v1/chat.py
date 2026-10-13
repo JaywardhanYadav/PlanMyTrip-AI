@@ -285,7 +285,7 @@ async def chat_stream(
                             "event": "status",
                             "data": json.dumps({"step": "synthesizing", "message": "Planning your trip..."}),
                         }
-                    elif node_name in ["flight_agent", "hotel_agent", "places_agent", "itinerary_agent"]:
+                    elif node_name in ["flight_agent", "hotel_agent", "places_agent", "itinerary_agent", "day_planner_agent"]:
                         serialized: dict[str, object] = {}
                         for k, v in node_update.items():
                             if isinstance(v, list):
@@ -302,7 +302,7 @@ async def chat_stream(
                             "event": "node_update",
                             "data": json.dumps({"node": node_name, "update": serialized}, default=str),
                         }
-                    elif node_name == "synthesis_agent":
+                    elif node_name in ["synthesis_agent", "final_plan_agent"]:
                         draft = node_update.get("itinerary_draft", "")
                         if draft and trip_id:
                             async with async_session_factory() as db_session:
