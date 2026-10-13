@@ -113,6 +113,7 @@ class FlightOption(BaseModel):
 
     source_provenance: Literal[
         "aviationstack",
+        "flightapi",
         "tavily",
         "cached",
     ]
@@ -156,6 +157,7 @@ class HotelOption(BaseModel):
     )
 
     source_provenance: Literal[
+        "serpapi",
         "tavily",
         "cached",
     ]
@@ -358,8 +360,14 @@ class PlanMyTripState(TypedDict, total=False):
 
     departure_station: str | None
     destination: str | None
+    destination_type: str | None
+    resolved_gateway: str | None
+    route_circuits: list[str] | None
+    gateway_note: str | None
+    budget_tier: str | None
     travelers_count: int | None
     duration_days: int | None
+    trip_nights: int | None
     start_date: str | None
     end_date: str | None
 
