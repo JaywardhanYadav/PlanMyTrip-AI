@@ -16,11 +16,31 @@ class IntakeSupervisorEvaluation(BaseModel):
     )
     destination: str | None = Field(
         default=None,
-        description="Travel destination city or region (e.g. 'Goa', 'Jaipur').",
+        description="Travel destination city or region (e.g. 'Goa', 'Jaipur', 'Rajasthan').",
+    )
+    destination_type: Literal["city", "state_region", "country"] = Field(
+        default="city",
+        description="Categorization of destination: city, state_region, or country.",
+    )
+    resolved_gateway: str | None = Field(
+        default=None,
+        description="Commercial gateway and IATA code if destination is a state or region (e.g. 'Jaipur (JAI)').",
+    )
+    route_circuits: list[str] = Field(
+        default_factory=list,
+        description="Proposed route circuits if destination is a state or region.",
+    )
+    gateway_note: str | None = Field(
+        default=None,
+        description="Explicit note explaining resolution of state/region to primary gateway hub.",
     )
     duration_days: int | None = Field(
         default=None,
         description="Total duration of the trip in days (e.g. 3, 5).",
+    )
+    trip_nights: int | None = Field(
+        default=None,
+        description="Calculated nights of stay as duration_days - 1.",
     )
     travelers_count: int | None = Field(
         default=None,
@@ -28,7 +48,11 @@ class IntakeSupervisorEvaluation(BaseModel):
     )
     budget_inr: float | None = Field(
         default=None,
-        description="Total estimated budget in Indian Rupees (INR).",
+        description="Total estimated budget in Indian Rupees (INR) if specified by user.",
+    )
+    budget_tier: Literal["budget", "mid_range", "luxury", "unspecified"] = Field(
+        default="unspecified",
+        description="Classified budget tier: budget, mid_range, luxury, or unspecified.",
     )
     start_date: str | None = Field(
         default=None,
@@ -36,7 +60,7 @@ class IntakeSupervisorEvaluation(BaseModel):
     )
     end_date: str | None = Field(
         default=None,
-        description="Calculated return date in YYYY-MM-DD format if duration is known.",
+        description="Calculated return date in YYYY-MM-DD format as start_date + timedelta(days=duration_days - 1).",
     )
     relative_date_inferred: str | None = Field(
         default=None,
@@ -52,7 +76,7 @@ class IntakeSupervisorEvaluation(BaseModel):
     )
     is_complete: bool = Field(
         default=False,
-        description="True if all 5 parameters are present and confirmed, ready to invoke booking agents.",
+        description="True if required parameters are present and confirmed, ready to invoke booking agents.",
     )
     next_question_or_confirmation: str | None = Field(
         default=None,
