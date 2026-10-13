@@ -104,14 +104,21 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
                     if isinstance(leg, dict):
                         dep_raw = str(leg.get("departure_time", f"{dep_date_obj.isoformat()}T08:00:00Z")).replace("Z", "+00:00")
                         arr_raw = str(leg.get("arrival_time", f"{dep_date_obj.isoformat()}T09:25:00Z")).replace("Z", "+00:00")
+                        dep_dt = datetime.fromisoformat(dep_raw)
+                        if dep_dt.tzinfo is None:
+                            dep_dt = dep_dt.replace(tzinfo=timezone.utc)
+                        arr_dt = datetime.fromisoformat(arr_raw)
+                        if arr_dt.tzinfo is None:
+                            arr_dt = arr_dt.replace(tzinfo=timezone.utc)
+
                         legs.append(
                             FlightLeg(
                                 origin_iata=str(leg.get("origin_iata", origin)),
                                 destination_iata=str(leg.get("destination_iata", destination)),
                                 carrier_code=str(leg.get("carrier_code", "6E")),
                                 flight_number=str(leg.get("flight_number", "Morning Window")),
-                                departure_time=datetime.fromisoformat(dep_raw),
-                                arrival_time=datetime.fromisoformat(arr_raw),
+                                departure_time=dep_dt,
+                                arrival_time=arr_dt,
                                 duration_minutes=int(leg.get("duration_minutes", 80)),
                             )
                         )
@@ -240,14 +247,21 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
                     if isinstance(leg, dict):
                         dep_raw = str(leg.get("departure_time", f"{ret_date_obj.isoformat()}T15:00:00Z")).replace("Z", "+00:00")
                         arr_raw = str(leg.get("arrival_time", f"{ret_date_obj.isoformat()}T16:25:00Z")).replace("Z", "+00:00")
+                        dep_dt = datetime.fromisoformat(dep_raw)
+                        if dep_dt.tzinfo is None:
+                            dep_dt = dep_dt.replace(tzinfo=timezone.utc)
+                        arr_dt = datetime.fromisoformat(arr_raw)
+                        if arr_dt.tzinfo is None:
+                            arr_dt = arr_dt.replace(tzinfo=timezone.utc)
+
                         legs.append(
                             FlightLeg(
                                 origin_iata=str(leg.get("origin_iata", destination)),
                                 destination_iata=str(leg.get("destination_iata", origin)),
                                 carrier_code=str(leg.get("carrier_code", "6E")),
                                 flight_number=str(leg.get("flight_number", "Return Scheduled Service")),
-                                departure_time=datetime.fromisoformat(dep_raw),
-                                arrival_time=datetime.fromisoformat(arr_raw),
+                                departure_time=dep_dt,
+                                arrival_time=arr_dt,
                                 duration_minutes=int(leg.get("duration_minutes", 85)),
                             )
                         )
