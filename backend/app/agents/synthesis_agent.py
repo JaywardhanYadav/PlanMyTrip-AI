@@ -102,19 +102,13 @@ def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: Multi
     parts.append("---")
     parts.append("")
 
-    if itinerary.flights or itinerary.return_flights:
-        parts.append("### ✈️ Travel Logistics (Flight Options)")
+    if itinerary.flights:
+        parts.append("### ✈️ Outbound Travel Logistics (Arrival Flights)")
         parts.append("")
-        if itinerary.flights:
-            parts.append(f"#### 🛫 Available Outbound Flights ({clean_origin} ➔ {clean_dest}):")
-            for idx, f in enumerate(itinerary.flights, 1):
-                parts.append(f"- **Option {idx}:** **{f.carrier}** ({f.service_type}) | Timings: {f.timing} | ₹{f.price_per_person_inr:,.0f} per person (Total: ₹{f.total_price_inr:,.0f} for {budget_data.travelers_count} travelers)")
-            parts.append("")
-        if itinerary.return_flights:
-            parts.append(f"#### 🛬 Available Return Flights ({clean_ret_origin} ➔ {clean_origin}):")
-            for idx, rf in enumerate(itinerary.return_flights, 1):
-                parts.append(f"- **Return Option {idx}:** **{rf.carrier}** ({rf.service_type}) | Timings: {rf.timing} | ₹{rf.price_per_person_inr:,.0f} per person (Total: ₹{rf.total_price_inr:,.0f} for {budget_data.travelers_count} travelers)")
-            parts.append("")
+        parts.append(f"#### 🛫 Available Outbound Flights ({clean_origin} ➔ {clean_dest}):")
+        for idx, f in enumerate(itinerary.flights, 1):
+            parts.append(f"- **Option {idx}:** **{f.carrier}** ({f.service_type}) | Timings: {f.timing} | ₹{f.price_per_person_inr:,.0f} per person (Total: ₹{f.total_price_inr:,.0f} for {budget_data.travelers_count} travelers)")
+        parts.append("")
         parts.append("---")
         parts.append("")
 
@@ -138,6 +132,16 @@ def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: Multi
         parts.append(f"🌆 **Evening:** {plan.evening}")
         parts.append(f"🚗 **Local Transport & Transfers:** {plan.transport_mode}")
         parts.append(f"📍 **Where to Stay Tonight:** {plan.stay_area}")
+        parts.append("")
+        parts.append("---")
+        parts.append("")
+
+    if itinerary.return_flights:
+        parts.append("### 🛬 Return Travel Logistics (Departure Journey)")
+        parts.append("")
+        parts.append(f"#### Available Return Flights ({clean_ret_origin} ➔ {clean_origin}):")
+        for idx, rf in enumerate(itinerary.return_flights, 1):
+            parts.append(f"- **Return Option {idx}:** **{rf.carrier}** ({rf.service_type}) | Timings: {rf.timing} | ₹{rf.price_per_person_inr:,.0f} per person (Total: ₹{rf.total_price_inr:,.0f} for {budget_data.travelers_count} travelers)")
         parts.append("")
         parts.append("---")
         parts.append("")
