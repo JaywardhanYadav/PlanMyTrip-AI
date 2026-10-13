@@ -24,6 +24,7 @@ async function sendChatMessage() {
   if (welcomeHero) welcomeHero.style.display = "none";
 
   input.value = "";
+  autoResizeChatInput(input);
   appendUserMessage(message);
 
   const token = localStorage.getItem("planmytrip_token");
@@ -450,6 +451,19 @@ function formatMarkdown(text) {
     .replace(/\n/gim, "<br>");
 }
 
+function autoResizeChatInput(textarea) {
+  if (!textarea) return;
+  textarea.style.height = "auto";
+  const scrollH = textarea.scrollHeight;
+  const newHeight = Math.min(Math.max(scrollH, 40), 180);
+  textarea.style.height = `${newHeight}px`;
+  if (scrollH > 180) {
+    textarea.style.overflowY = "auto";
+  } else {
+    textarea.style.overflowY = "hidden";
+  }
+}
+
 function attachChatEventListeners() {
   const sendBtn = document.getElementById("chat-send-btn");
   if (sendBtn) {
@@ -465,6 +479,9 @@ function attachChatEventListeners() {
         e.preventDefault();
         sendChatMessage();
       }
+    };
+    chatInput.oninput = () => {
+      autoResizeChatInput(chatInput);
     };
   }
   const hitlApprove = document.getElementById("hitl-approve-btn");

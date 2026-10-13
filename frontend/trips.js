@@ -111,6 +111,9 @@ function quickFillPrompt(destination) {
   if (scrollArea) {
     scrollArea.scrollTo({ top: scrollArea.scrollHeight, behavior: "smooth" });
   }
+  if (typeof autoResizeChatInput === "function") {
+    autoResizeChatInput(input);
+  }
   input.focus();
 }
 
