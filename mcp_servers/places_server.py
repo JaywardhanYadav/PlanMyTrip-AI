@@ -352,5 +352,5 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", "8002"))
+    port = int(os.getenv("PORT", "8003"))
     uvicorn.run(app, host="0.0.0.0", port=port)
