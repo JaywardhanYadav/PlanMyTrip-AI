@@ -26,6 +26,14 @@ class IntakeSupervisorEvaluation(BaseModel):
         default=None,
         description="Commercial gateway and IATA code if destination is a state or region (e.g. 'Jaipur (JAI)').",
     )
+    return_gateway: str | None = Field(
+        default=None,
+        description="Commercial return gateway and IATA code for open-jaw multi-city circuits (e.g. 'Udaipur (UDR)').",
+    )
+    return_iata: str | None = Field(
+        default=None,
+        description="Return airport IATA code (e.g. 'UDR').",
+    )
     route_circuits: list[str] = Field(
         default_factory=list,
         description="Proposed route circuits if destination is a state or region.",

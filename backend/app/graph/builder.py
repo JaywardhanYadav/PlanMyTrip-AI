@@ -46,6 +46,10 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
         updates["destination_type"] = evaluation.destination_type
     if evaluation.resolved_gateway:
         updates["resolved_gateway"] = evaluation.resolved_gateway
+    if evaluation.return_gateway:
+        updates["return_gateway"] = evaluation.return_gateway
+    if evaluation.return_iata:
+        updates["return_iata"] = evaluation.return_iata
     if evaluation.route_circuits:
         updates["route_circuits"] = evaluation.route_circuits
     if evaluation.gateway_note:

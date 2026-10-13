@@ -362,6 +362,8 @@ class PlanMyTripState(TypedDict, total=False):
     destination: str | None
     destination_type: str | None
     resolved_gateway: str | None
+    return_gateway: str | None
+    return_iata: str | None
     target_stay_neighborhood: str | None
     route_circuits: list[str] | None
     gateway_note: str | None

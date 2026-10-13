@@ -13,16 +13,22 @@ STATE_REGION_GATEWAYS: dict[str, dict[str, Any]] = {
         "gateway": "Jaipur (JAI)",
         "destination_city": "Jaipur",
         "iata": "JAI",
+        "return_gateway": "Udaipur (UDR)",
+        "return_city": "Udaipur",
+        "return_iata": "UDR",
         "circuits": [
             "Golden Triangle & Heritage: Jaipur -> Jodhpur -> Udaipur",
             "Desert & Forts: Jaipur -> Pushkar -> Jaisalmer",
         ],
-        "note": "Resolved state Rajasthan to primary commercial gateway Jaipur (JAI).",
+        "note": "Resolved state Rajasthan to inbound gateway Jaipur (JAI) and open-jaw departure gateway Udaipur (UDR).",
     },
     "KERALA": {
         "gateway": "Kochi (COK)",
         "destination_city": "Kochi",
         "iata": "COK",
+        "return_gateway": "Kochi (COK)",
+        "return_city": "Kochi",
+        "return_iata": "COK",
         "circuits": [
             "Classic Kerala: Kochi -> Munnar -> Thekkady -> Alleppey",
             "Backwaters & Coast: Kochi -> Alleppey -> Varkala -> Kovalam",
@@ -162,21 +168,23 @@ KNOWN_COUNTRIES = {
 
 def resolve_destination_entity(
     destination: str | None,
-) -> tuple[Literal["city", "state_region", "country"], str | None, list[str], str | None]:
+) -> tuple[Literal["city", "state_region", "country"], str | None, list[str], str | None, str | None, str | None]:
     if not destination:
-        return "city", None, [], None
+        return "city", None, [], None, None, None
 
     clean = destination.strip().upper()
 
     for state_name, info in STATE_REGION_GATEWAYS.items():
         if state_name in clean or clean in state_name:
-            return "state_region", str(info["gateway"]), [str(c) for c in info["circuits"]], str(info["note"])
+            ret_gw = str(info["return_gateway"]) if "return_gateway" in info else None
+            ret_iata = str(info["return_iata"]) if "return_iata" in info else None
+            return "state_region", str(info["gateway"]), [str(c) for c in info["circuits"]], str(info["note"]), ret_gw, ret_iata
 
     for country in KNOWN_COUNTRIES:
         if country in clean or clean in country:
-            return "country", None, [], None
+            return "country", None, [], None, None, None
 
-    return "city", None, [], None
+    return "city", None, [], None, None, None
 
 
 def compute_relative_reference_dates() -> tuple[str, str, str, str, str, str]:
@@ -371,10 +379,14 @@ async def evaluate_trip_intake(
             if parsed.travelers_count is not None and "travelers_count" in parsed.missing_fields:
                 parsed.missing_fields.remove("travelers_count")
 
-            dest_type, gateway, circuits, note = resolve_destination_entity(parsed.destination)
+            dest_type, gateway, circuits, note, ret_gw, ret_iata = resolve_destination_entity(parsed.destination)
             parsed.destination_type = dest_type
             if gateway and not parsed.resolved_gateway:
                 parsed.resolved_gateway = gateway
+            if ret_gw and not parsed.return_gateway:
+                parsed.return_gateway = ret_gw
+            if ret_iata and not parsed.return_iata:
+                parsed.return_iata = ret_iata
             if circuits and not parsed.route_circuits:
                 parsed.route_circuits = circuits
             if note and not parsed.gateway_note:
@@ -445,7 +457,7 @@ async def evaluate_trip_intake(
             inferred_travelers = 1
 
     dest_val = existing_state.get("destination")
-    dest_type, gateway, circuits, note = resolve_destination_entity(dest_val)
+    dest_type, gateway, circuits, note, ret_gw, ret_iata = resolve_destination_entity(dest_val)
     dur_days = existing_state.get("duration_days")
     start_d = existing_state.get("start_date")
     end_d = existing_state.get("end_date")
@@ -465,6 +477,8 @@ async def evaluate_trip_intake(
         destination=dest_val,
         destination_type=dest_type,
         resolved_gateway=gateway,
+        return_gateway=ret_gw,
+        return_iata=ret_iata,
         route_circuits=circuits,
         gateway_note=note,
         travelers_count=inferred_travelers,

@@ -39,6 +39,7 @@ def resolve_iata(name: str | None, default: str) -> str:
         "PNQ": "PNQ", "PUNE": "PNQ",
         "COK": "COK", "KOCHI": "COK", "COCHIN": "COK", "KERALA": "COK",
         "TRV": "TRV", "TRIVANDRUM": "TRV", "THIRUVANANTHAPURAM": "TRV",
+        "UDR": "UDR", "UDAIPUR": "UDR",
         "AMD": "AMD", "AHMEDABAD": "AMD",
         "IXC": "IXC", "CHANDIGARH": "IXC", "HIMACHAL": "IXC", "SHIMLA": "IXC", "MANALI": "IXC",
         "DED": "DED", "DEHRADUN": "DED", "UTTARAKHAND": "DED", "RISHIKESH": "DED",
@@ -225,11 +226,12 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
         },
     ]
 
+    ret_origin = state.get("return_iata") or destination
     raw_return_opts: list[object] = []
     try:
         raw_ret_res = await registry.flight_client.call_tool(
             name="search_flight_offers",
-            arguments={"origin": destination, "destination": origin, "departure_date": ret_date_obj.isoformat(), "adults": travelers},
+            arguments={"origin": ret_origin, "destination": origin, "departure_date": ret_date_obj.isoformat(), "adults": travelers},
         )
         res_ret = raw_ret_res.get("options", [])
         if isinstance(res_ret, list):
@@ -256,7 +258,7 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
 
                         legs.append(
                             FlightLeg(
-                                origin_iata=str(leg.get("origin_iata", destination)),
+                                origin_iata=str(leg.get("origin_iata", ret_origin)),
                                 destination_iata=str(leg.get("destination_iata", origin)),
                                 carrier_code=str(leg.get("carrier_code", "6E")),
                                 flight_number=str(leg.get("flight_number", "Return Scheduled Service")),
@@ -274,7 +276,7 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
 
                 return_options.append(
                     FlightOption(
-                        option_id=str(item.get("option_id", f"flight_ret_{destination}_{origin}_{len(return_options)+1}")),
+                        option_id=str(item.get("option_id", f"flight_ret_{ret_origin}_{origin}_{len(return_options)+1}")),
                         carrier=str(item.get("carrier", "IndiGo")),
                         legs=legs,
                         fare=Money(amount=total_fare, currency=curr),
@@ -291,11 +293,11 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
             total_fare = tmpl["unit_fare"] * Decimal(str(travelers))
             return_options.append(
                 FlightOption(
-                    option_id=f"flight_ret_{destination}_{origin}_{tmpl['id_suffix']}",
+                    option_id=f"flight_ret_{ret_origin}_{origin}_{tmpl['id_suffix']}",
                     carrier=tmpl["carrier"],
                     legs=[
                         FlightLeg(
-                            origin_iata=destination,
+                            origin_iata=ret_origin,
                             destination_iata=origin,
                             carrier_code=tmpl["carrier_code"],
                             flight_number=tmpl["departure_window"],

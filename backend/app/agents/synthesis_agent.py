@@ -75,6 +75,7 @@ class StructuredItinerary(BaseModel):
     duration_label: str = Field(description="Trip duration label, e.g. '5 Days / 4 Nights'.")
     origin: str = Field(description="Departure city.")
     destination: str = Field(description="Destination city.")
+    return_origin: str | None = Field(default=None, description="Return departure city.")
     gateway_note: str | None = Field(default=None, description="Internal gateway resolution notes.")
     flights: list[FlightPlanItem] = Field(description="Outbound flight options.")
     return_flights: list[FlightPlanItem] = Field(description="Return flight options.")
@@ -87,12 +88,16 @@ class StructuredItinerary(BaseModel):
 def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: MultiTierTripBudget) -> str:
     clean_origin = re.sub(r"\s*\([A-Z]{3}\)", "", itinerary.origin).strip()
     clean_dest = re.sub(r"\s*\([A-Z]{3}\)", "", itinerary.destination).strip()
+    clean_ret_origin = re.sub(r"\s*\([A-Z]{3}\)", "", itinerary.return_origin or "").strip() or clean_dest
 
     parts: list[str] = []
 
     parts.append(f"# {itinerary.trip_title}")
     parts.append(f"**Travel Dates:** {itinerary.dates_formatted} ({itinerary.duration_label})")
-    parts.append(f"**Route:** {clean_origin} ➔ {clean_dest}")
+    if clean_ret_origin and clean_ret_origin.lower() != clean_dest.lower():
+        parts.append(f"**Route:** {clean_origin} ➔ {clean_dest} (Return departure via {clean_ret_origin})")
+    else:
+        parts.append(f"**Route:** {clean_origin} ➔ {clean_dest}")
     parts.append("")
     parts.append("---")
     parts.append("")
@@ -106,7 +111,7 @@ def render_itinerary_markdown(itinerary: StructuredItinerary, budget_data: Multi
                 parts.append(f"- **Option {idx}:** **{f.carrier}** ({f.service_type}) | Timings: {f.timing} | ₹{f.price_per_person_inr:,.0f} per person (Total: ₹{f.total_price_inr:,.0f} for {budget_data.travelers_count} travelers)")
             parts.append("")
         if itinerary.return_flights:
-            parts.append(f"#### 🛬 Available Return Flights ({clean_dest} ➔ {clean_origin}):")
+            parts.append(f"#### 🛬 Available Return Flights ({clean_ret_origin} ➔ {clean_origin}):")
             for idx, rf in enumerate(itinerary.return_flights, 1):
                 parts.append(f"- **Return Option {idx}:** **{rf.carrier}** ({rf.service_type}) | Timings: {rf.timing} | ₹{rf.price_per_person_inr:,.0f} per person (Total: ₹{rf.total_price_inr:,.0f} for {budget_data.travelers_count} travelers)")
             parts.append("")
@@ -437,6 +442,23 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
         if d_num in day_map:
             p = day_map[d_num]
             trans_mode = p.transport_mode
+            day_theme = p.day_theme
+            morning = p.morning
+            afternoon = p.afternoon
+            evening = p.evening
+
+            if hub_item and hub_item.city:
+                if hub_item.city.lower() in ["jodhpur", "udaipur", "munnar", "thekkady", "alleppey"]:
+                    day_theme = hub_item.day_theme
+                    morning = hub_item.morning
+                    afternoon = hub_item.afternoon
+                    evening = hub_item.evening
+                elif d_num == total_days:
+                    day_theme = hub_item.day_theme
+                    morning = hub_item.morning
+                    afternoon = hub_item.afternoon
+                    evening = hub_item.evening
+
             if hub_item and hub_item.is_city_transition and d_num > 1 and d_num < total_days:
                 trans_mode = f"Private chauffeur inter-city vehicle transfer to {hub_item.city}. ({hub_item.luggage_instruction})"
             elif hub_item and not hub_item.is_city_transition:
@@ -447,10 +469,10 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
             final_day_plans.append(
                 DayActivityPlan(
                     day_number=d_num,
-                    day_theme=p.day_theme,
-                    morning=p.morning,
-                    afternoon=p.afternoon,
-                    evening=p.evening,
+                    day_theme=day_theme,
+                    morning=morning,
+                    afternoon=afternoon,
+                    evening=evening,
                     transport_mode=trans_mode,
                     stay_area=stay_note,
                 )
@@ -472,10 +494,10 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
                 final_day_plans.append(
                     DayActivityPlan(
                         day_number=d_num,
-                        day_theme="Morning Bazaars, Wrap-Up & Return Journey",
-                        morning="Leisurely breakfast, check-out, and final souvenir shopping at local markets.",
-                        afternoon="Lunch at a renowned cafe followed by cab transfer to airport departure terminal.",
-                        evening=f"Board scheduled evening return flight back to {clean_origin}.",
+                        day_theme=hub_item.day_theme if hub_item else "Morning Bazaars, Wrap-Up & Return Journey",
+                        morning=hub_item.morning if hub_item else "Leisurely breakfast, check-out, and final souvenir shopping at local markets.",
+                        afternoon=hub_item.afternoon if hub_item else "Lunch at a renowned cafe followed by cab transfer to airport departure terminal.",
+                        evening=hub_item.evening if hub_item else f"Board scheduled evening return flight back to {clean_origin}.",
                         transport_mode="Hired cab to airport departure terminal.",
                         stay_area=stay_note,
                     )
@@ -491,10 +513,10 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
                 final_day_plans.append(
                     DayActivityPlan(
                         day_number=d_num,
-                        day_theme=z_name,
-                        morning=f"Morning visit to top landmarks and heritage sites in {hub_city}: {p_str}.",
-                        afternoon="Relish authentic regional cuisine and local delicacies for lunch.",
-                        evening="Sunset viewing, vibrant evening promenades, and dinner at a top restaurant.",
+                        day_theme=hub_item.day_theme if hub_item else z_name,
+                        morning=hub_item.morning if hub_item else f"Morning visit to top landmarks and heritage sites in {hub_city}: {p_str}.",
+                        afternoon=hub_item.afternoon if hub_item else "Relish authentic regional cuisine and local delicacies for lunch.",
+                        evening=hub_item.evening if hub_item else "Sunset viewing, vibrant evening promenades, and dinner at a top restaurant.",
                         transport_mode=trans_mode,
                         stay_area=stay_note,
                     )
@@ -502,17 +524,23 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
 
     final_day_plans.sort(key=lambda x: x.day_number)
 
-    trip_title = (
-        parsed_itinerary.trip_title
-        if parsed_itinerary and parsed_itinerary.trip_title
-        else f"{clean_dest} Getaway: Culture & Exploration"
-    )
+    if parsed_itinerary and parsed_itinerary.trip_title and ("Jaipur" not in parsed_itinerary.trip_title or "RAJASTHAN" not in dest.upper()):
+        trip_title = parsed_itinerary.trip_title
+    elif "RAJASTHAN" in dest.upper():
+        trip_title = f"Royal Rajasthan: {total_days}-Day Journey through Jaipur, Jodhpur & Udaipur"
+    elif "KERALA" in dest.upper():
+        trip_title = f"Kerala Highlights: {total_days}-Day Journey through Kochi, Munnar, Thekkady & Alleppey"
+    else:
+        trip_title = f"{clean_dest} Getaway: Culture & Exploration"
 
-    closing_note = (
-        parsed_itinerary.closing_note
-        if parsed_itinerary and parsed_itinerary.closing_note
-        else f"Wishing you an unforgettable, serene vacation in {clean_dest}!"
-    )
+    if "RAJASTHAN" in dest.upper():
+        closing_note = "Wishing you a royal and unforgettable vacation across Rajasthan!"
+    elif "KERALA" in dest.upper():
+        closing_note = "Wishing you a serene and rejuvenating vacation across God's Own Country, Kerala!"
+    elif parsed_itinerary and parsed_itinerary.closing_note:
+        closing_note = parsed_itinerary.closing_note
+    else:
+        closing_note = f"Wishing you an unforgettable, serene vacation in {clean_dest}!"
 
     structured_itinerary = StructuredItinerary(
         trip_title=trip_title,
@@ -520,6 +548,7 @@ async def synthesis_agent_node(state: PlanMyTripState) -> dict[str, object]:
         duration_label=f"{total_days} Days / {total_nights} Nights",
         origin=clean_origin,
         destination=clean_dest,
+        return_origin=state.get("return_gateway") or None,
         gateway_note=None,
         flights=flight_items,
         return_flights=ret_items,

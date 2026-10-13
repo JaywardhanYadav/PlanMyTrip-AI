@@ -95,6 +95,43 @@ HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
             "amenities": "Carved stone balconies, rooftop restaurant with city view, swimming pool, friendly travel tour desk.",
         },
     ],
+    "RAJASTHAN": [
+        {
+            "tier": "comfort",
+            "name": "Shahpura House Heritage Hotel",
+            "location": "Bani Park, Jaipur (Jaipur Hub - Days 1 to 3)",
+            "nightly_rate": Decimal("4800.00"),
+            "amenities": "Traditional royal Shekhawati frescoes, marble courtyards, rooftop restaurant overlooking old city, swimming pool.",
+        },
+        {
+            "tier": "jodhpur_heritage",
+            "name": "Ajit Bhawan - A Palace Resort",
+            "location": "Circuit House Road, Jodhpur (Jodhpur Hub - Days 4 to 5)",
+            "nightly_rate": Decimal("6500.00"),
+            "amenities": "India's first heritage palace resort, antique car collection, lush courtyards, Jodhpur royal dining, close to Mehrangarh.",
+        },
+        {
+            "tier": "udaipur_lakeview",
+            "name": "Jagat Niwas Palace Heritage Hotel",
+            "location": "Lake Pichola / Lal Ghat, Udaipur (Udaipur Hub - Days 6 to 8)",
+            "nightly_rate": Decimal("5800.00"),
+            "amenities": "Restored 17th-century haveli directly on Lake Pichola, private jharokhas with lake vistas, rooftop candlelit dining.",
+        },
+        {
+            "tier": "royal_luxury",
+            "name": "ITC Rajputana & Trident Udaipur (5-Star Palace Circuit)",
+            "location": "Jaipur, Jodhpur & Udaipur Multi-Hub Circuit",
+            "nightly_rate": Decimal("13500.00"),
+            "amenities": "Seamless 5-star luxury multi-city chain stay, signature royal spa, fine dining, private lake & courtyard views.",
+        },
+        {
+            "tier": "budget",
+            "name": "Umaid Bhawan Heritage & Boutique Haveli Collection",
+            "location": "Bani Park & Old City Hubs, Rajasthan",
+            "nightly_rate": Decimal("3100.00"),
+            "amenities": "Carved stone balconies, rooftop restaurant with sunset views, air-conditioned boutique rooms, travel desk.",
+        },
+    ],
     "MUMBAI": [
         {
             "tier": "comfort",
@@ -237,7 +274,7 @@ def get_default_catalog(dest: str, budget: Decimal) -> list[dict[str, object]]:
     for k, v in HOTEL_CATALOG.items():
         if k in clean or clean in k:
             if budget >= Decimal("200000.00"):
-                return [h for h in v if str(h.get("tier")) in ["ultra_luxury", "heritage_luxury", "business_luxury", "luxury", "comfort"]]
+                return [h for h in v if str(h.get("tier")) in ["ultra_luxury", "heritage_luxury", "business_luxury", "royal_luxury", "luxury", "comfort"]]
             return v
 
     if budget >= Decimal("200000.00"):
@@ -284,23 +321,26 @@ def get_default_catalog(dest: str, budget: Decimal) -> list[dict[str, object]]:
 
 
 async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    gateway_raw = state.get("resolved_gateway")
-    raw_dest = (gateway_raw or state.get("destination") or "Pune").strip()
-    clean = raw_dest.upper()
-    if any(p in clean for p in ["PUNE", "PNQ"]):
+    dest_state = (state.get("destination") or "").upper().strip()
+    gateway_raw = (state.get("resolved_gateway") or "").upper().strip()
+    raw_dest = (state.get("destination") or state.get("resolved_gateway") or "Pune").strip()
+    clean = f"{dest_state} {gateway_raw}"
+    if any(k in clean for k in ["KERALA", "KOCHI", "COCHIN", "MUNNAR", "ALLEPPEY"]):
+        destination = "Kerala"
+    elif any(r in clean for r in ["RAJASTHAN"]):
+        destination = "Rajasthan"
+    elif any(j in clean for j in ["JAIPUR", "JAI"]):
+        destination = "Jaipur"
+    elif any(p in clean for p in ["PUNE", "PNQ"]):
         destination = "Pune"
     elif any(b in clean for b in ["BENGL", "BANGAL", "BENGAL", "BLR"]):
         destination = "Bangalore"
     elif any(g in clean for g in ["GOA", "GOI", "DABOLIM"]):
         destination = "Goa"
-    elif any(j in clean for j in ["JAIPUR", "JAI", "RAJASTHAN"]):
-        destination = "Jaipur"
     elif any(m in clean for m in ["MUMBAI", "BOMBAY", "BOM"]):
         destination = "Mumbai"
     elif any(d in clean for d in ["DELHI", "DEL"]):
         destination = "Delhi"
-    elif any(k in clean for k in ["KERALA", "KOCHI", "COCHIN", "MUNNAR", "ALLEPPEY"]):
-        destination = "Kerala"
     elif any(h in clean for h in ["HIMACHAL", "SHIMLA", "MANALI"]):
         destination = "Shimla"
     elif any(u in clean for u in ["UTTARAKHAND", "DEHRADUN", "RISHIKESH"]):

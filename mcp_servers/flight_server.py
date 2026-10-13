@@ -80,6 +80,71 @@ async def list_tools() -> dict[str, list[ToolDefinition]]:
 
 
 def _get_fallback_options(origin: str, destination: str, departure_date: str) -> list[FlightOptionResult]:
+    is_return = origin.upper() in ["JAI", "UDR", "COK", "GOI", "AMD", "DEL", "BLR", "BOM", "IXC"]
+    if is_return:
+        return [
+            FlightOptionResult(
+                option_id=f"flight_{origin}_{destination}_indigo_ret",
+                carrier="IndiGo",
+                legs=[
+                    FlightLegSchema(
+                        origin_iata=origin,
+                        destination_iata=destination,
+                        carrier_code="6E",
+                        flight_number="Evening Window (Scheduled Service)",
+                        departure_time=f"{departure_date}T16:40:00Z",
+                        arrival_time=f"{departure_date}T18:10:00Z",
+                        duration_minutes=90,
+                    )
+                ],
+                fare_amount="4650.00",
+                currency="INR",
+                is_estimate=True,
+                source_provenance="cached",
+                source_citation="https://www.goindigo.in",
+            ),
+            FlightOptionResult(
+                option_id=f"flight_{origin}_{destination}_airindia_ret",
+                carrier="Air India Express",
+                legs=[
+                    FlightLegSchema(
+                        origin_iata=origin,
+                        destination_iata=destination,
+                        carrier_code="IX",
+                        flight_number="Night Window (Scheduled Service)",
+                        departure_time=f"{departure_date}T20:15:00Z",
+                        arrival_time=f"{departure_date}T21:40:00Z",
+                        duration_minutes=85,
+                    )
+                ],
+                fare_amount="4850.00",
+                currency="INR",
+                is_estimate=True,
+                source_provenance="cached",
+                source_citation="https://www.airindia.com",
+            ),
+            FlightOptionResult(
+                option_id=f"flight_{origin}_{destination}_spicejet_ret",
+                carrier="SpiceJet",
+                legs=[
+                    FlightLegSchema(
+                        origin_iata=origin,
+                        destination_iata=destination,
+                        carrier_code="SG",
+                        flight_number="Afternoon Window (Scheduled Service)",
+                        departure_time=f"{departure_date}T11:20:00Z",
+                        arrival_time=f"{departure_date}T12:45:00Z",
+                        duration_minutes=85,
+                    )
+                ],
+                fare_amount="4300.00",
+                currency="INR",
+                is_estimate=True,
+                source_provenance="cached",
+                source_citation="https://www.spicejet.com",
+            ),
+        ]
+
     return [
         FlightOptionResult(
             option_id=f"flight_{origin}_{destination}_indigo",
