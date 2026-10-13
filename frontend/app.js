@@ -27,9 +27,10 @@ async function sendChatMessage() {
   appendUserMessage(message);
 
   const token = localStorage.getItem("planmytrip_token");
-  const agentMessageDiv = appendAgentMessage("Thinking...");
+  const agentMessageDiv = appendAgentThinking();
 
   if (!token) {
+    agentMessageDiv.classList.remove("is-thinking");
     agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Your session has ended. Please sign in to continue planning trips. <a href="login.html" style="color: var(--brand-accent); text-decoration: underline; font-weight: 600;">Go to Login</a></span>`;
     setTimeout(() => {
       window.location.href = "login.html";
@@ -84,6 +85,7 @@ async function sendChatMessage() {
 
       if (initRes.status === 401) {
         localStorage.removeItem("planmytrip_token");
+        agentMessageDiv.classList.remove("is-thinking");
         agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Your session has expired. Redirecting to login... <a href="login.html" style="color: var(--brand-accent); text-decoration: underline; font-weight: 600;">Click here to sign in</a></span>`;
         setTimeout(() => {
           window.location.href = "login.html";
@@ -105,17 +107,20 @@ async function sendChatMessage() {
         }
       } else {
         const errJson = await initRes.json().catch(() => ({}));
+        agentMessageDiv.classList.remove("is-thinking");
         agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Unable to start new trip: ${escapeHtml(errJson.detail || initRes.statusText || "Server error")}. Please try again.</span>`;
         return;
       }
     } catch (e) {
       console.error(e);
+      agentMessageDiv.classList.remove("is-thinking");
       agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Connection error starting trip. Please check server status.</span>`;
       return;
     }
   }
 
   if (!threadIdToUse) {
+    agentMessageDiv.classList.remove("is-thinking");
     agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Unable to establish chat session. Please refresh or try again.</span>`;
     return;
   }
@@ -131,6 +136,7 @@ async function sendChatMessage() {
 
     if (response.status === 401) {
       localStorage.removeItem("planmytrip_token");
+      agentMessageDiv.classList.remove("is-thinking");
       agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Your session has expired. Redirecting to login...</span>`;
       setTimeout(() => {
         window.location.href = "login.html";
@@ -184,6 +190,7 @@ async function sendChatMessage() {
       }
     }
   } catch (err) {
+    agentMessageDiv.classList.remove("is-thinking");
     agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Error: ${escapeHtml(err.message)}</span>`;
   }
 }
@@ -225,63 +232,49 @@ function updateAgentStatus(agent, subtitle, percent) {
   }
 }
 
-function ensureProgressBox(messageDiv) {
-  let box = messageDiv.querySelector(".agent-planning-progress-box");
-  if (!box) {
-    messageDiv.innerHTML = `
-      <div class="agent-planning-progress-box" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; font-size: 0.92rem; line-height: 1.6;">
-        <div style="font-weight: 600; margin-bottom: 10px; color: #818cf8; display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #818cf8; box-shadow: 0 0 10px #818cf8;"></span>
-          Coordinating Travel Specialists...
-        </div>
-        <div id="prog-flight" style="padding: 3px 0; color: #94a3b8;">✈️ Finding live flight routes & fares... <span class="p-badge" style="color: #f59e0b;">⏳ Searching</span></div>
-        <div id="prog-places" style="padding: 3px 0; color: #94a3b8;">📍 Mapping sights, culture & stay zone... <span class="p-badge" style="color: #f59e0b;">⏳ Mapping</span></div>
-        <div id="prog-hotels" style="padding: 3px 0; color: #94a3b8;">🏨 Searching verified hotels in zone... <span class="p-badge" style="color: #f59e0b;">⏳ Searching</span></div>
-        <div id="prog-weather" style="padding: 3px 0; color: #94a3b8;">⛅ Verifying seasonal climate... <span class="p-badge" style="color: #f59e0b;">⏳ Checking</span></div>
-        <div id="prog-cost" style="padding: 3px 0; color: #94a3b8;">💰 Calculating direct trip costs... <span class="p-badge" style="color: #f59e0b;">⏳ Waiting</span></div>
-      </div>
-    `;
-    box = messageDiv.querySelector(".agent-planning-progress-box");
+function updateThinkingStatus(messageDiv, statusText) {
+  if (!messageDiv) return;
+  const label = messageDiv.querySelector(".ai-thinking-label");
+  if (label) {
+    label.style.opacity = "0.2";
+    setTimeout(() => {
+      label.innerText = statusText;
+      label.style.opacity = "1";
+    }, 120);
   }
-  return box;
 }
 
 function handleSSEEvent(type, data, messageDiv) {
   if (type === "status") {
-    if (data.step === "planning_started" || (data.message && data.message.includes("planning"))) {
-      ensureProgressBox(messageDiv);
-    } else if (data.message && !data.message.includes("got all") && !data.message.includes("slots")) {
-      const box = messageDiv.querySelector(".agent-planning-progress-box");
-      if (!box) {
-        messageDiv.innerText = data.message;
-      }
+    if (data.step === "planning_started") {
+      updateThinkingStatus(messageDiv, "Analyzing your trip request...");
+    } else if (data.step === "intake_complete") {
+      updateThinkingStatus(messageDiv, "Finding best flights, hotels, and attractions...");
+    } else if (data.step === "synthesizing") {
+      updateThinkingStatus(messageDiv, "Putting together your daily plan...");
     }
   } else if (type === "guardrail") {
     if (!data.allowed) {
+      messageDiv.classList.remove("is-thinking");
       messageDiv.innerHTML = `<span style="color: var(--accent-danger);">⚠️ Request Rejected: ${escapeHtml(data.reason)}</span>`;
     }
   } else if (type === "node_update") {
-    ensureProgressBox(messageDiv);
     const node = data.node;
     const update = data.update;
 
     if (node === "flight_agent" || (update && update.flight_options)) {
-      const el = messageDiv.querySelector("#prog-flight");
-      if (el) el.innerHTML = `✈️ Live flights & fares <span style="color: #10b981; font-weight: 600;">✅ Found</span>`;
+      updateThinkingStatus(messageDiv, "Flights discovered! Finding best stays...");
       updateAgentStatus("flight", "Flights discovered & ranked", "100%");
     }
     if (node === "places_agent" || (update && update.places_data)) {
-      const el = messageDiv.querySelector("#prog-places");
-      if (el) el.innerHTML = `📍 Attractions & stay district <span style="color: #10b981; font-weight: 600;">✅ Mapped</span>`;
+      updateThinkingStatus(messageDiv, "Mapping sights and local experiences...");
     }
     if (node === "hotel_agent" || (update && update.hotel_options)) {
-      const el = messageDiv.querySelector("#prog-hotels");
-      if (el) el.innerHTML = `🏨 Verified Google Hotels <span style="color: #10b981; font-weight: 600;">✅ Found</span>`;
+      updateThinkingStatus(messageDiv, "Hotels selected! Scheduling daily itinerary...");
       updateAgentStatus("hotel", "Hotels selected within budget", "100%");
     }
     if (node === "itinerary_agent" || (update && update.weather_outlook)) {
-      const el = messageDiv.querySelector("#prog-weather");
-      if (el) el.innerHTML = `⛅ Seasonal climate normals <span style="color: #10b981; font-weight: 600;">✅ Verified</span>`;
+      updateThinkingStatus(messageDiv, "Drafting your complete tour plan...");
       updateAgentStatus("itinerary", "Day-wise activities scheduled", "95%");
     }
   } else if (type === "intake_update") {
@@ -289,32 +282,23 @@ function handleSSEEvent(type, data, messageDiv) {
       loadTrips();
     }
   } else if (type === "synthesis") {
-    const elCost = messageDiv.querySelector("#prog-cost");
-    if (elCost) elCost.innerHTML = `💰 Direct cost breakdown <span style="color: #10b981; font-weight: 600;">✅ Reconciled</span>`;
-
-    const elHeader = messageDiv.querySelector(".agent-planning-progress-box div:first-child");
-    if (elHeader) {
-      elHeader.innerHTML = `<span style="color: #10b981; font-weight: 600;">✅ Travel Plan Successfully Generated</span>`;
-    }
-
-    const box = messageDiv.querySelector(".agent-planning-progress-box");
+    messageDiv.classList.remove("is-thinking");
     const formattedDraft = formatMarkdown(data.draft);
-    if (box) {
-      messageDiv.innerHTML = box.outerHTML + `<div style="margin-top: 16px;">${formattedDraft}</div>`;
-    } else {
-      messageDiv.innerHTML = formattedDraft;
-    }
+    messageDiv.innerHTML = formattedDraft;
     updateAgentStatus("itinerary", "Itinerary completed", "100%");
+    scrollChatToBottom();
   } else if (type === "interrupt") {
     const panel = document.getElementById("hitl-panel");
     if (panel) panel.style.display = "none";
   } else if (type === "done") {
+    messageDiv.classList.remove("is-thinking");
     if (activeTripId && typeof loadTripIntake === "function") {
       loadTripIntake(activeTripId);
     }
     if (typeof loadTrips === "function") {
       loadTrips();
     }
+    scrollChatToBottom();
   }
 }
 
@@ -333,7 +317,8 @@ async function resumeWithFeedback(action, details) {
   const panel = document.getElementById("hitl-panel");
   panel.style.display = "none";
 
-  appendAgentMessage(`Applying human decision: ${action}...`);
+  const agentMessageDiv = appendAgentThinking();
+  updateThinkingStatus(agentMessageDiv, "Updating your itinerary...");
 
   try {
     const res = await fetch(`${API_BASE}/hitl/resume`, {
@@ -350,11 +335,15 @@ async function resumeWithFeedback(action, details) {
     });
 
     const data = await res.json();
+    agentMessageDiv.classList.remove("is-thinking");
     if (data.itinerary_draft) {
-      appendAgentMessage(formatMarkdown(data.itinerary_draft));
+      agentMessageDiv.innerHTML = formatMarkdown(data.itinerary_draft);
+    } else {
+      agentMessageDiv.innerHTML = "Itinerary updated successfully.";
     }
   } catch (err) {
-    alert(`Resume failed: ${err.message}`);
+    agentMessageDiv.classList.remove("is-thinking");
+    agentMessageDiv.innerHTML = `<span style="color: var(--accent-danger);">Resume failed: ${escapeHtml(err.message)}</span>`;
   }
 }
 
@@ -385,6 +374,38 @@ function appendUserMessage(text) {
 
   container.appendChild(userWrap);
   scrollChatToBottom();
+}
+
+function appendAgentThinking() {
+  if (typeof setConversationMode === "function") {
+    setConversationMode(true, "PlanMyTrip AI — Active Conversation");
+  }
+  const container = document.getElementById("chat-messages");
+  const agentWrap = document.createElement("div");
+  agentWrap.className = "message-agent-wrap";
+
+  agentWrap.innerHTML = `
+    <div class="chat-agent-avatar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="#38bdf8"/>
+        <circle cx="12" cy="12" r="2.5" fill="#ffffff"/>
+      </svg>
+    </div>
+    <div class="message-bubble message-agent-bubble markdown-body is-thinking">
+      <div class="ai-thinking-pill">
+        <div class="ai-thinking-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span class="ai-thinking-label">Planning your trip...</span>
+      </div>
+    </div>
+  `;
+
+  container.appendChild(agentWrap);
+  scrollChatToBottom();
+  return agentWrap.querySelector(".message-agent-bubble");
 }
 
 function appendAgentMessage(text) {

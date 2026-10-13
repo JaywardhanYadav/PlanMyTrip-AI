@@ -976,6 +976,72 @@ a:hover {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
 
+.message-agent-bubble.is-thinking {
+  padding: 0.85rem 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px 18px 18px 18px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.ai-thinking-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.ai-thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ai-thinking-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b82f6;
+  display: inline-block;
+  animation: aiThinkingPulse 1.4s infinite ease-in-out both;
+}
+
+.ai-thinking-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.ai-thinking-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.ai-thinking-dots span:nth-child(3) {
+  animation-delay: 0s;
+}
+
+@keyframes aiThinkingPulse {
+  0%, 80%, 100% {
+    transform: scale(0.65);
+    opacity: 0.45;
+  }
+  40% {
+    transform: scale(1.15);
+    opacity: 1;
+    background: #6366f1;
+  }
+}
+
+.ai-thinking-label {
+  transition: opacity 0.2s ease-in-out;
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
 .agent-lead-text {
   margin-bottom: 1rem;
   color: #1e293b;
