@@ -227,6 +227,51 @@ DESTINATION_KNOWLEDGE: dict[str, dict[str, Any]] = {
             "easiest_way": "Hire a private chauffeur vehicle for the entire multi-day itinerary. The driver stays with you throughout the route from airport pickup to final drop-off."
         },
         "stay_strategy": "For trips of 4 to 6 days across Kerala, a moving circuit is highly recommended: 1 night in Fort Kochi/Bolgatty upon arrival, 2 nights in Munnar hills, 1 night in Thekkady, and 1 to 2 nights in an Alleppey backwater resort or luxury houseboat before returning to Kochi airport."
+    },
+    "AHMEDABAD": {
+        "zones": [
+            {
+                "zone_name": "UNESCO Walled City & Historic Ashrams",
+                "places": [
+                    "Sabarmati Ashram (Gandhi Smarak Sangrahalaya riverside sanctuary)",
+                    "Sidi Saiyyed Mosque (Intricate stone lattice 'Tree of Life' jali)",
+                    "Jama Masjid & Bhadra Fort (15th-century heritage architecture)",
+                    "Manek Chowk (Historic gold bazaar and evening culinary hub)"
+                ],
+                "recommended_stay_area": "Ashram Road or Central Ahmedabad",
+                "stay_reason": "Central location providing easy access to Sabarmati riverfront and UNESCO heritage monuments."
+            },
+            {
+                "zone_name": "Stepwells & Spiritual Wonders",
+                "places": [
+                    "Adalaj Stepwell (Exquisite 5-storey subterranean stepwell with carved pillars)",
+                    "Akshardham Temple Gandhinagar (Sprawling sandstone monument & evening laser show)",
+                    "Sabarmati Riverfront Promenade & Flower Park",
+                    "Calico Museum of Textiles (World-renowned historic Indian fabric collection)"
+                ],
+                "recommended_stay_area": "SG Highway or Bodakdev",
+                "stay_reason": "Upscale dining corridor with quick highway connectivity to Gandhinagar."
+            },
+            {
+                "zone_name": "Artisan Markets & Lakeside Leisure",
+                "places": [
+                    "Kankaria Lake (Historic 15th-century royal lake with leisure gardens)",
+                    "Sarkhej Roza (Tranquil tomb complex known as 'Acropolis of Ahmedabad')",
+                    "Law Garden Night Market (Traditional mirror-work handicrafts & bandhani)",
+                    "Gujarat Science City (IMAX 3D theatre, robotics & space gallery)"
+                ],
+                "recommended_stay_area": "Central Ahmedabad",
+                "stay_reason": "Ideal for authentic Kathiyawadi cuisine, shopping, and evening relaxation."
+            }
+        ],
+        "transit_guide": {
+            "best_option": "App-based cabs (Uber/Ola) or rented private chauffeur cab",
+            "car_rental_rate": "₹2,200 - ₹3,200 per day for chauffeur sedan",
+            "scooter_rental_rate": "₹500 - ₹700 per day",
+            "taxi_guidance": "Sardar Vallabhbhai Patel International Airport (AMD) is ~10 km from city center. Official prepaid airport taxi counter is ~₹350 - ₹500.",
+            "easiest_way": "Dedicated AC private day cab for stepwells and Gandhinagar excursions."
+        },
+        "stay_strategy": "Stay at a central hotel along Ashram Road or SG Highway for convenient access across city sights and excursions."
     }
 }
 
@@ -239,6 +284,8 @@ def get_destination_cluster_data(destination: str) -> dict[str, Any]:
         return DESTINATION_KNOWLEDGE["PUNE"]
     elif any(k in dest_clean for k in ["KERALA", "KOCHI", "COCHIN", "MUNNAR", "ALLEPPEY"]):
         return DESTINATION_KNOWLEDGE["KERALA"]
+    elif any(a in dest_clean for a in ["GUJARAT", "AHMEDABAD", "AMD"]):
+        return DESTINATION_KNOWLEDGE["AHMEDABAD"]
 
     for key, data in DESTINATION_KNOWLEDGE.items():
         if key in dest_clean or dest_clean in key:
@@ -279,7 +326,8 @@ def get_destination_cluster_data(destination: str) -> dict[str, Any]:
 
 
 async def places_agent_node(state: PlanMyTripState) -> dict[str, object]:
-    raw_dest = (state.get("destination") or "Pune").strip()
+    gateway_raw = state.get("resolved_gateway")
+    raw_dest = (gateway_raw or state.get("destination") or "Pune").strip()
     clean = raw_dest.upper()
     if any(p in clean for p in ["PUNE", "PNQ"]):
         destination = "Pune"
@@ -287,12 +335,18 @@ async def places_agent_node(state: PlanMyTripState) -> dict[str, object]:
         destination = "Bangalore"
     elif any(g in clean for g in ["GOA", "GOI", "DABOLIM"]):
         destination = "Goa"
-    elif any(j in clean for j in ["JAIPUR", "JAI"]):
+    elif any(j in clean for j in ["JAIPUR", "JAI", "RAJASTHAN"]):
         destination = "Jaipur"
     elif any(m in clean for m in ["MUMBAI", "BOMBAY", "BOM"]):
         destination = "Mumbai"
     elif any(d in clean for d in ["DELHI", "DEL"]):
         destination = "Delhi"
+    elif any(k in clean for k in ["KERALA", "KOCHI", "COCHIN"]):
+        destination = "Kerala"
+    elif any(h in clean for h in ["HIMACHAL", "SHIMLA", "MANALI"]):
+        destination = "Shimla"
+    elif any(a in clean for a in ["GUJARAT", "AHMEDABAD", "AMD"]):
+        destination = "Ahmedabad"
     else:
         destination = raw_dest or "Pune"
 
@@ -315,6 +369,13 @@ async def places_agent_node(state: PlanMyTripState) -> dict[str, object]:
     if mcp_places:
         cluster_info["live_mcp_activities"] = mcp_places
 
+    target_neighborhood = "Central"
+    zones = cluster_info.get("zones", [])
+    if isinstance(zones, list) and zones and isinstance(zones[0], dict):
+        rec_area = str(zones[0].get("recommended_stay_area", "Central"))
+        target_neighborhood = rec_area.split(",")[0].strip()
+
     return {
         "places_data": cluster_info,
+        "target_stay_neighborhood": target_neighborhood,
     }
