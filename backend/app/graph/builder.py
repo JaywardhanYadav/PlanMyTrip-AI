@@ -42,16 +42,30 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
         updates["departure_station"] = evaluation.departure_station
     if evaluation.destination:
         updates["destination"] = evaluation.destination
+    if evaluation.destination_type:
+        updates["destination_type"] = evaluation.destination_type
+    if evaluation.resolved_gateway:
+        updates["resolved_gateway"] = evaluation.resolved_gateway
+    if evaluation.route_circuits:
+        updates["route_circuits"] = evaluation.route_circuits
+    if evaluation.gateway_note:
+        updates["gateway_note"] = evaluation.gateway_note
+    if evaluation.budget_tier:
+        updates["budget_tier"] = evaluation.budget_tier
     if evaluation.travelers_count:
         updates["travelers_count"] = evaluation.travelers_count
     if evaluation.duration_days:
         updates["duration_days"] = evaluation.duration_days
+    if evaluation.trip_nights:
+        updates["trip_nights"] = evaluation.trip_nights
     if evaluation.start_date:
         updates["start_date"] = evaluation.start_date
     if evaluation.end_date:
         updates["end_date"] = evaluation.end_date
     if evaluation.budget_inr is not None:
         updates["trip_budget"] = Money(amount=Decimal(str(evaluation.budget_inr)), currency="INR")
+    elif evaluation.budget_tier == "unspecified":
+        updates["trip_budget"] = None
 
     if not evaluation.is_complete and evaluation.next_question_or_confirmation:
         updates["messages"] = [AIMessage(content=evaluation.next_question_or_confirmation)]
@@ -60,17 +74,24 @@ async def intake_supervisor_node(state: PlanMyTripState) -> dict[str, object]:
 
 
 async def workers_orchestrator_node(state: PlanMyTripState) -> dict[str, object]:
-    flight_res, hotel_res, places_res, itin_res = await asyncio.gather(
+    flight_res, places_res, itin_res = await asyncio.gather(
         flight_agent_node(state),
-        hotel_agent_node(state),
         places_agent_node(state),
         itinerary_agent_node(state),
     )
+
+    stage1_state = dict(state)
+    stage1_state.update(flight_res)
+    stage1_state.update(places_res)
+    stage1_state.update(itin_res)
+
+    hotel_res = await hotel_agent_node(stage1_state)  # type: ignore[arg-type]
+
     combined: dict[str, object] = {}
     combined.update(flight_res)
-    combined.update(hotel_res)
     combined.update(places_res)
     combined.update(itin_res)
+    combined.update(hotel_res)
     return combined
 
 
