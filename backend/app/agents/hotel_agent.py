@@ -191,6 +191,20 @@ HOTEL_CATALOG: dict[str, list[dict[str, object]]] = {
             "nightly_rate": Decimal("8500.00"),
             "amenities": "Tribal village style cottages with elephant grass roofs, spice gardens, Ayurvedic center, close to Periyar safari gate.",
         },
+        {
+            "tier": "budget",
+            "name": "Rossitta Wood Castle / Fort Kochi Heritage Inn",
+            "location": "Fort Kochi Heritage District, Kerala",
+            "nightly_rate": Decimal("3150.00"),
+            "amenities": "Teakwood boutique heritage rooms, authentic Kerala breakfast, close to Chinese fishing nets and art cafes.",
+        },
+        {
+            "tier": "houseboat",
+            "name": "Alleppey Luxury Private Houseboat (Cruise & Stay)",
+            "location": "Punnamada Jetty / Vembanad Lake canals, Alleppey, Kerala",
+            "nightly_rate": Decimal("9500.00"),
+            "amenities": "Private 1-bedroom AC luxury houseboat, personal chef & captain, upper sun deck, all freshly prepared meals included (lunch, tea, dinner, breakfast).",
+        },
     ],
     "AHMEDABAD": [
         {

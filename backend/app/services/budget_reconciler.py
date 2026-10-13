@@ -108,11 +108,25 @@ def reconcile_multi_tier_budget(
             elif amt > Decimal("10000.00") and matched_lux_hotel is None:
                 matched_lux_hotel = amt
 
-    matched_roundtrip_per_person: Decimal | None = None
+    budget_flight_roundtrip: Decimal | None = None
+    mid_flight_roundtrip: Decimal | None = None
+    lux_flight_roundtrip: Decimal | None = None
+
     if flight_options:
-        out_amt = flight_options[0].fare.amount / Decimal(travelers)
-        ret_amt = (return_flight_options[0].fare.amount / Decimal(travelers)) if return_flight_options else out_amt
-        matched_roundtrip_per_person = (out_amt + ret_amt).quantize(CENT, rounding=ROUND_HALF_UP)
+        out_fares = sorted([f.fare.amount / Decimal(travelers) for f in flight_options])
+        ret_fares = sorted([rf.fare.amount / Decimal(travelers) for rf in return_flight_options]) if return_flight_options else out_fares
+
+        budget_out = out_fares[0]
+        budget_ret = ret_fares[0]
+        budget_flight_roundtrip = (budget_out + budget_ret).quantize(CENT, rounding=ROUND_HALF_UP)
+
+        mid_out_idx = min(1, len(out_fares) - 1)
+        mid_ret_idx = min(1, len(ret_fares) - 1)
+        mid_flight_roundtrip = (out_fares[mid_out_idx] + ret_fares[mid_ret_idx]).quantize(CENT, rounding=ROUND_HALF_UP)
+
+        lux_out_idx = len(out_fares) - 1
+        lux_ret_idx = len(ret_fares) - 1
+        lux_flight_roundtrip = (out_fares[lux_out_idx] + ret_fares[lux_ret_idx]).quantize(CENT, rounding=ROUND_HALF_UP)
 
     budget_breakdown = compute_tier_breakdown(
         tier_name="Budget Tier",
@@ -126,7 +140,7 @@ def reconcile_multi_tier_budget(
         duration_days=days,
         duration_nights=nights,
         matched_hotel_nightly=matched_budget_hotel,
-        matched_flight_roundtrip=matched_roundtrip_per_person,
+        matched_flight_roundtrip=budget_flight_roundtrip,
     )
 
     mid_breakdown = compute_tier_breakdown(
@@ -141,7 +155,7 @@ def reconcile_multi_tier_budget(
         duration_days=days,
         duration_nights=nights,
         matched_hotel_nightly=matched_mid_hotel,
-        matched_flight_roundtrip=(matched_roundtrip_per_person * Decimal("1.20")).quantize(CENT, rounding=ROUND_HALF_UP) if matched_roundtrip_per_person else None,
+        matched_flight_roundtrip=mid_flight_roundtrip,
     )
 
     lux_breakdown = compute_tier_breakdown(
@@ -156,7 +170,7 @@ def reconcile_multi_tier_budget(
         duration_days=days,
         duration_nights=nights,
         matched_hotel_nightly=matched_lux_hotel,
-        matched_flight_roundtrip=(matched_roundtrip_per_person * Decimal("1.45")).quantize(CENT, rounding=ROUND_HALF_UP) if matched_roundtrip_per_person else None,
+        matched_flight_roundtrip=lux_flight_roundtrip,
     )
 
     if budget_tier == "budget":
