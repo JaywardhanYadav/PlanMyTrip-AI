@@ -147,14 +147,13 @@ PlanMyTrip-AI/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/
-│   │   │   ├── day_planner_agent.py     # Weather integration & day-by-day outline
-│   │   │   ├── final_plan_agent.py      # Deterministic N-day verifier & final plan
+│   │   │   ├── day_planner_agent.py     # Weather integration & day-by-day schedule
+│   │   │   ├── final_plan_agent.py      # Deterministic N-day verifier & final tour plan
 │   │   │   ├── flight_agent.py          # Flight research & carrier selection
 │   │   │   ├── hotel_agent.py           # Location-grounded hotel & dining agent
 │   │   │   ├── intake_agent.py          # Gateway resolver & date math supervisor
-│   │   │   ├── itinerary_agent.py       # Backward-compatible shim -> day_planner_agent
 │   │   │   ├── places_agent.py          # Attractions cluster & target stay neighborhood
-│   │   │   └── synthesis_agent.py       # Backward-compatible shim -> final_plan_agent
+│   │   │   └── supervisor.py            # HITL approval & workflow coordinator
 │   │   ├── api/
 │   │   │   └── v1/
 │   │   │       ├── auth.py              # User authentication, JWT login & signup

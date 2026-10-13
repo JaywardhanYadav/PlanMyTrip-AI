@@ -106,7 +106,6 @@ def build_trip_graph(checkpointer: Any = None) -> Any:
     builder.add_node("intake_supervisor", intake_supervisor_node)
     builder.add_node("workers_orchestrator", workers_orchestrator_node)
     builder.add_node("final_plan_agent", final_plan_agent_node)
-    builder.add_node("synthesis_agent", final_plan_agent_node)
 
     builder.add_edge(START, "input_guard")
     builder.add_conditional_edges("input_guard", route_guardrail)
