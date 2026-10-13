@@ -85,6 +85,16 @@ class Settings(BaseSettings):
         description="Tavily search API key for travel context and indicative pricing.",
     )
 
+    FLIGHTAPI_KEY: SecretStr | None = Field(
+        default=None,
+        description="FlightAPI.io key for live airfares and schedules.",
+    )
+
+    SERPAPI_API_KEY: SecretStr | None = Field(
+        default=None,
+        description="SerpApi key for Google Hotels and Maps.",
+    )
+
     JWT_SECRET: SecretStr = Field(
         ...,
         min_length=32,
