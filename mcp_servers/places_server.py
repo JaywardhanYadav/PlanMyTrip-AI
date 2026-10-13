@@ -86,6 +86,18 @@ async def list_tools() -> dict[str, list[ToolDefinition]]:
                     "required": ["destination"],
                 },
             ),
+            ToolDefinition(
+                name="search_dining",
+                description="Search for top-rated lunch and dinner spots in a neighborhood.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "destination": {"type": "string"},
+                        "neighborhood": {"type": "string"},
+                    },
+                    "required": ["destination"],
+                },
+            ),
         ]
     }
 
@@ -313,6 +325,27 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
         serialized_acts = [a.model_dump() for a in acts]
         _ATTRACTION_CACHE[cache_key] = serialized_acts
         return {"status": "success", "activities": serialized_acts, "cached": False}
+
+    elif call.name == "search_dining":
+        neighborhood = str(args.get("neighborhood", "")).strip() or "Central"
+        dining_cache_key = f"{destination}_{neighborhood}_dining"
+        if dining_cache_key in _ATTRACTION_CACHE:
+            return {"status": "success", "dining": _ATTRACTION_CACHE[dining_cache_key], "cached": True}
+
+        dining_options = [
+            {
+                "type": "lunch",
+                "recommendation": f"Authentic regional dining near {neighborhood}, {destination}",
+                "cuisine": "Traditional Regional Thali",
+            },
+            {
+                "type": "dinner",
+                "recommendation": f"Fine dining or rooftop terrace in {neighborhood}, {destination}",
+                "cuisine": "Multi-cuisine and local specialties",
+            },
+        ]
+        _ATTRACTION_CACHE[dining_cache_key] = dining_options
+        return {"status": "success", "dining": dining_options, "cached": False}
 
     raise HTTPException(status_code=404, detail=f"Tool {call.name} not found")
 
