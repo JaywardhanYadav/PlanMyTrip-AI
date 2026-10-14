@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import cast, Literal
 from ..core.money import Money
@@ -326,32 +327,28 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
     gateway_raw = (state.get("resolved_gateway") or "").upper().strip()
     raw_dest = (state.get("destination") or state.get("resolved_gateway") or "Pune").strip()
     clean = f"{dest_state} {gateway_raw}"
-    if any(k in clean for k in ["KERALA", "KOCHI", "COCHIN", "MUNNAR", "ALLEPPEY"]):
-        destination = "Kerala"
-    elif any(r in clean for r in ["RAJASTHAN"]):
-        destination = "Rajasthan"
-    elif any(j in clean for j in ["JAIPUR", "JAI"]):
-        destination = "Jaipur"
-    elif any(p in clean for p in ["PUNE", "PNQ"]):
-        destination = "Pune"
-    elif any(b in clean for b in ["BENGL", "BANGAL", "BENGAL", "BLR"]):
-        destination = "Bangalore"
-    elif any(g in clean for g in ["GOA", "GOI", "DABOLIM"]):
-        destination = "Goa"
-    elif any(m in clean for m in ["MUMBAI", "BOMBAY", "BOM"]):
-        destination = "Mumbai"
-    elif any(d in clean for d in ["DELHI", "DEL"]):
-        destination = "Delhi"
-    elif any(h in clean for h in ["HIMACHAL", "SHIMLA", "MANALI"]):
-        destination = "Shimla"
-    elif any(u in clean for u in ["UTTARAKHAND", "DEHRADUN", "RISHIKESH"]):
-        destination = "Dehradun"
-    elif any(s in clean for s in ["KASHMIR", "SRINAGAR"]):
-        destination = "Srinagar"
-    elif any(a in clean for a in ["GUJARAT", "AHMEDABAD", "AMD"]):
-        destination = "Ahmedabad"
-    else:
-        destination = raw_dest or "Pune"
+    dest_mappings: list[tuple[tuple[str, ...], str]] = [
+        (("KERALA", "KOCHI", "COCHIN", "MUNNAR", "ALLEPPEY"), "Kerala"),
+        (("RAJASTHAN",), "Rajasthan"),
+        (("JAIPUR", "JAI"), "Jaipur"),
+        (("PUNE", "PNQ"), "Pune"),
+        (("BENGL", "BANGAL", "BENGAL", "BLR"), "Bangalore"),
+        (("GOA", "GOI", "DABOLIM"), "Goa"),
+        (("MUMBAI", "BOMBAY", "BOM"), "Mumbai"),
+        (("DELHI", "DEL"), "Delhi"),
+        (("HIMACHAL", "SHIMLA", "MANALI"), "Shimla"),
+        (("UTTARAKHAND", "DEHRADUN", "RISHIKESH"), "Dehradun"),
+        (("KASHMIR", "SRINAGAR"), "Srinagar"),
+        (("GUJARAT", "AHMEDABAD", "AMD"), "Ahmedabad"),
+    ]
+    destination = raw_dest or "Pune"
+    for keywords, target in dest_mappings:
+        if any(keyword in clean for keyword in keywords):
+            destination = target
+            break
+
+    start_d = state.get("start_date") or "2026-10-19"
+    end_d = state.get("end_date") or "2026-10-23"
 
     nights = state.get("trip_nights")
     if not nights or nights < 1:
@@ -359,26 +356,18 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
         if dur and dur > 1:
             nights = dur - 1
         else:
-            start_str = state.get("start_date")
-            end_str = state.get("end_date")
-            if start_str and end_str:
-                try:
-                    from datetime import date
-                    d1 = date.fromisoformat(str(start_str))
-                    d2 = date.fromisoformat(str(end_str))
-                    diff = (d2 - d1).days
-                    nights = diff if diff > 0 else 1
-                except Exception:
-                    nights = 2
-            else:
+            try:
+                d1 = datetime.strptime(start_d[:10], "%Y-%m-%d").date()
+                d2 = datetime.strptime(end_d[:10], "%Y-%m-%d").date()
+                diff = (d2 - d1).days
+                nights = diff if diff > 0 else 1
+            except Exception:
                 nights = 2
 
     trip_budget = state.get("trip_budget")
     budget_dec = trip_budget.amount if trip_budget else Decimal("50000.00")
 
     neighborhood = state.get("target_stay_neighborhood")
-    start_d = str(state.get("start_date") or "2026-10-19")
-    end_d = str(state.get("end_date") or "2026-10-23")
 
     registry = MCPRegistry()
     raw_hotels: list[object] = []
@@ -400,9 +389,8 @@ async def hotel_agent_node(state: PlanMyTripState) -> dict[str, object]:
         raw_hotels = []
 
     parsed_hotels: list[HotelOption] = []
-    if isinstance(raw_hotels, list):
-        for idx, item in enumerate(raw_hotels, 1):
-            if isinstance(item, dict):
+    for idx, item in enumerate(raw_hotels, 1):
+        if isinstance(item, dict):
                 nightly_str = str(item.get("nightly_rate", "5500.00"))
                 curr = str(item.get("currency", "INR"))
                 nightly_dec = Decimal(nightly_str)

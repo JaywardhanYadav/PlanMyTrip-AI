@@ -60,7 +60,7 @@ def parse_or_default_date(d_str: str | None, fallback: date) -> date:
     if not d_str:
         return fallback
     try:
-        return date.fromisoformat(str(d_str))
+        return datetime.strptime(d_str[:10], "%Y-%m-%d").date()
     except Exception:
         return fallback
 
@@ -97,51 +97,50 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
         raw_options = []
 
     outbound_options: list[FlightOption] = []
-    if isinstance(raw_options, list):
-        for item in raw_options:
-            if isinstance(item, dict):
-                legs_raw = item.get("legs", [])
-                legs: list[FlightLeg] = []
-                for leg in legs_raw:
-                    if isinstance(leg, dict):
-                        dep_raw = str(leg.get("departure_time", f"{dep_date_obj.isoformat()}T08:00:00Z")).replace("Z", "+00:00")
-                        arr_raw = str(leg.get("arrival_time", f"{dep_date_obj.isoformat()}T09:25:00Z")).replace("Z", "+00:00")
-                        dep_dt = datetime.fromisoformat(dep_raw)
-                        if dep_dt.tzinfo is None:
-                            dep_dt = dep_dt.replace(tzinfo=timezone.utc)
-                        arr_dt = datetime.fromisoformat(arr_raw)
-                        if arr_dt.tzinfo is None:
-                            arr_dt = arr_dt.replace(tzinfo=timezone.utc)
+    for item in raw_options:
+        if isinstance(item, dict):
+            legs_raw = item.get("legs", [])
+            legs: list[FlightLeg] = []
+            for leg in legs_raw:
+                if isinstance(leg, dict):
+                    dep_raw = str(leg.get("departure_time", f"{dep_date_obj.isoformat()}T08:00:00Z")).replace("Z", "+00:00")
+                    arr_raw = str(leg.get("arrival_time", f"{dep_date_obj.isoformat()}T09:25:00Z")).replace("Z", "+00:00")
+                    dep_dt = datetime.fromisoformat(dep_raw)
+                    if dep_dt.tzinfo is None:
+                        dep_dt = dep_dt.replace(tzinfo=timezone.utc)
+                    arr_dt = datetime.fromisoformat(arr_raw)
+                    if arr_dt.tzinfo is None:
+                        arr_dt = arr_dt.replace(tzinfo=timezone.utc)
 
-                        legs.append(
-                            FlightLeg(
-                                origin_iata=str(leg.get("origin_iata", origin)),
-                                destination_iata=str(leg.get("destination_iata", destination)),
-                                carrier_code=str(leg.get("carrier_code", "6E")),
-                                flight_number=str(leg.get("flight_number", "Morning Window")),
-                                departure_time=dep_dt,
-                                arrival_time=arr_dt,
-                                duration_minutes=int(leg.get("duration_minutes", 80)),
-                            )
+                    legs.append(
+                        FlightLeg(
+                            origin_iata=str(leg.get("origin_iata", origin)),
+                            destination_iata=str(leg.get("destination_iata", destination)),
+                            carrier_code=str(leg.get("carrier_code", "6E")),
+                            flight_number=str(leg.get("flight_number", "Morning Window")),
+                            departure_time=dep_dt,
+                            arrival_time=arr_dt,
+                            duration_minutes=int(leg.get("duration_minutes", 80)),
                         )
-                base_fare = Decimal(str(item.get("fare_amount", "4500.00")))
-                total_fare = base_fare * Decimal(str(travelers))
-                curr = str(item.get("currency", "INR"))
-                prov_val = str(item.get("source_provenance", "flightapi"))
-                if prov_val not in ["aviationstack", "flightapi", "tavily", "cached"]:
-                    prov_val = "cached"
-
-                outbound_options.append(
-                    FlightOption(
-                        option_id=str(item.get("option_id", f"fl_{origin}_{destination}_live_{len(outbound_options)+1}")),
-                        carrier=str(item.get("carrier", "IndiGo")),
-                        legs=legs,
-                        fare=Money(amount=total_fare, currency=curr),
-                        is_estimate=bool(item.get("is_estimate", False)),
-                        source_provenance=cast(Literal["aviationstack", "flightapi", "tavily", "cached"], prov_val),
-                        source_citation=str(item.get("source_citation", "https://www.flightapi.io")),
                     )
+            base_fare = Decimal(str(item.get("fare_amount", "4500.00")))
+            total_fare = base_fare * Decimal(str(travelers))
+            curr = str(item.get("currency", "INR"))
+            prov_val = str(item.get("source_provenance", "flightapi"))
+            if prov_val not in ["aviationstack", "flightapi", "tavily", "cached"]:
+                prov_val = "cached"
+
+            outbound_options.append(
+                FlightOption(
+                    option_id=str(item.get("option_id", f"fl_{origin}_{destination}_live_{len(outbound_options)+1}")),
+                    carrier=str(item.get("carrier", "IndiGo")),
+                    legs=legs,
+                    fare=Money(amount=total_fare, currency=curr),
+                    is_estimate=bool(item.get("is_estimate", False)),
+                    source_provenance=cast(Literal["aviationstack", "flightapi", "tavily", "cached"], prov_val),
+                    source_citation=str(item.get("source_citation", "https://www.flightapi.io")),
                 )
+            )
 
     schedule_templates: list[ScheduleTemplate] = [
         {
@@ -241,51 +240,50 @@ async def flight_agent_node(state: PlanMyTripState) -> dict[str, object]:
         raw_return_opts = []
 
     return_options: list[FlightOption] = []
-    if isinstance(raw_return_opts, list):
-        for item in raw_return_opts[:2]:
-            if isinstance(item, dict):
-                legs_raw = item.get("legs", [])
-                legs = []
-                for leg in legs_raw:
-                    if isinstance(leg, dict):
-                        dep_raw = str(leg.get("departure_time", f"{ret_date_obj.isoformat()}T15:00:00Z")).replace("Z", "+00:00")
-                        arr_raw = str(leg.get("arrival_time", f"{ret_date_obj.isoformat()}T16:25:00Z")).replace("Z", "+00:00")
-                        dep_dt = datetime.fromisoformat(dep_raw)
-                        if dep_dt.tzinfo is None:
-                            dep_dt = dep_dt.replace(tzinfo=timezone.utc)
-                        arr_dt = datetime.fromisoformat(arr_raw)
-                        if arr_dt.tzinfo is None:
-                            arr_dt = arr_dt.replace(tzinfo=timezone.utc)
+    for item in raw_return_opts[:2]:
+        if isinstance(item, dict):
+            legs_raw = item.get("legs", [])
+            ret_legs: list[FlightLeg] = []
+            for leg in legs_raw:
+                if isinstance(leg, dict):
+                    dep_raw = str(leg.get("departure_time", f"{ret_date_obj.isoformat()}T15:00:00Z")).replace("Z", "+00:00")
+                    arr_raw = str(leg.get("arrival_time", f"{ret_date_obj.isoformat()}T16:25:00Z")).replace("Z", "+00:00")
+                    dep_dt = datetime.fromisoformat(dep_raw)
+                    if dep_dt.tzinfo is None:
+                        dep_dt = dep_dt.replace(tzinfo=timezone.utc)
+                    arr_dt = datetime.fromisoformat(arr_raw)
+                    if arr_dt.tzinfo is None:
+                        arr_dt = arr_dt.replace(tzinfo=timezone.utc)
 
-                        legs.append(
-                            FlightLeg(
-                                origin_iata=str(leg.get("origin_iata", ret_origin)),
-                                destination_iata=str(leg.get("destination_iata", origin)),
-                                carrier_code=str(leg.get("carrier_code", "6E")),
-                                flight_number=str(leg.get("flight_number", "Return Scheduled Service")),
-                                departure_time=dep_dt,
-                                arrival_time=arr_dt,
-                                duration_minutes=int(leg.get("duration_minutes", 85)),
-                            )
+                    ret_legs.append(
+                        FlightLeg(
+                            origin_iata=str(leg.get("origin_iata", ret_origin)),
+                            destination_iata=str(leg.get("destination_iata", origin)),
+                            carrier_code=str(leg.get("carrier_code", "6E")),
+                            flight_number=str(leg.get("flight_number", "Return Scheduled Service")),
+                            departure_time=dep_dt,
+                            arrival_time=arr_dt,
+                            duration_minutes=int(leg.get("duration_minutes", 85)),
                         )
-                base_fare = Decimal(str(item.get("fare_amount", "4600.00")))
-                total_fare = base_fare * Decimal(str(travelers))
-                curr = str(item.get("currency", "INR"))
-                prov_val = str(item.get("source_provenance", "flightapi"))
-                if prov_val not in ["aviationstack", "flightapi", "tavily", "cached"]:
-                    prov_val = "cached"
-
-                return_options.append(
-                    FlightOption(
-                        option_id=str(item.get("option_id", f"flight_ret_{ret_origin}_{origin}_{len(return_options)+1}")),
-                        carrier=str(item.get("carrier", "IndiGo")),
-                        legs=legs,
-                        fare=Money(amount=total_fare, currency=curr),
-                        is_estimate=bool(item.get("is_estimate", False)),
-                        source_provenance=cast(Literal["aviationstack", "flightapi", "tavily", "cached"], prov_val),
-                        source_citation=str(item.get("source_citation", "https://www.flightapi.io")),
                     )
+            base_fare = Decimal(str(item.get("fare_amount", "4600.00")))
+            total_fare = base_fare * Decimal(str(travelers))
+            curr = str(item.get("currency", "INR"))
+            prov_val = str(item.get("source_provenance", "flightapi"))
+            if prov_val not in ["aviationstack", "flightapi", "tavily", "cached"]:
+                prov_val = "cached"
+
+            return_options.append(
+                FlightOption(
+                    option_id=str(item.get("option_id", f"flight_ret_{ret_origin}_{origin}_{len(return_options)+1}")),
+                    carrier=str(item.get("carrier", "IndiGo")),
+                    legs=ret_legs,
+                    fare=Money(amount=total_fare, currency=curr),
+                    is_estimate=bool(item.get("is_estimate", False)),
+                    source_provenance=cast(Literal["aviationstack", "flightapi", "tavily", "cached"], prov_val),
+                    source_citation=str(item.get("source_citation", "https://www.flightapi.io")),
                 )
+            )
 
     if not return_options:
         for tmpl in return_templates:

@@ -35,7 +35,7 @@ async def final_plan_agent_node(state: PlanMyTripState) -> dict[str, object]:
     dest = state.get("destination") or "Gujarat"
     gateway_note = state.get("gateway_note")
     resolved_gateway = state.get("resolved_gateway")
-    display_dest = dest or resolved_gateway
+    display_dest = dest or resolved_gateway or "Gujarat"
     clean_origin = re.sub(r"\s*\([A-Z]{3}\)", "", dep_station).strip()
     clean_dest = re.sub(r"\s*\([A-Z]{3}\)", "", display_dest).strip()
     start_d = state.get("start_date") or "2026-10-19"
@@ -44,8 +44,8 @@ async def final_plan_agent_node(state: PlanMyTripState) -> dict[str, object]:
     total_days = state.get("duration_days")
     if not total_days:
         try:
-            d_start = datetime.fromisoformat(str(start_d)).date()
-            d_end = datetime.fromisoformat(str(end_d)).date()
+            d_start = datetime.strptime(start_d[:10], "%Y-%m-%d").date()
+            d_end = datetime.strptime(end_d[:10], "%Y-%m-%d").date()
             diff = (d_end - d_start).days
             if diff >= 0:
                 total_days = diff + 1
@@ -58,12 +58,14 @@ async def final_plan_agent_node(state: PlanMyTripState) -> dict[str, object]:
     if not total_nights or total_nights < 0:
         total_nights = max(1, total_days - 1)
 
-    raw_tier = str(state.get("budget_tier") or "unspecified").lower()
-    budget_tier_literal: Literal["budget", "mid_range", "luxury", "unspecified"]
-    if raw_tier in ["budget", "mid_range", "luxury", "unspecified"]:
-        budget_tier_literal = raw_tier  # type: ignore[assignment]
-    else:
-        budget_tier_literal = "unspecified"
+    raw_tier = (state.get("budget_tier") or "unspecified").lower()
+    budget_tier_literal: Literal["budget", "mid_range", "luxury", "unspecified"] = "unspecified"
+    if raw_tier == "budget":
+        budget_tier_literal = "budget"
+    elif raw_tier == "mid_range":
+        budget_tier_literal = "mid_range"
+    elif raw_tier == "luxury":
+        budget_tier_literal = "luxury"
 
     budget_data = reconcile_multi_tier_budget(
         budget_tier=budget_tier_literal,
@@ -182,10 +184,10 @@ async def final_plan_agent_node(state: PlanMyTripState) -> dict[str, object]:
     if isinstance(places_info, dict):
         tg = places_info.get("transit_guide")
         if isinstance(tg, dict):
-            transit_guide_dict = tg
+            transit_guide_dict = {str(k): v for k, v in tg.items()}
         zn = places_info.get("zones")
         if isinstance(zn, list):
-            zones_list = [z for z in zn if isinstance(z, dict)]
+            zones_list = [dict(z) for z in zn if isinstance(z, dict)]
         st = places_info.get("stay_strategy")
         if st:
             stay_strategy_text = str(st)
@@ -380,7 +382,7 @@ async def final_plan_agent_node(state: PlanMyTripState) -> dict[str, object]:
         origin=clean_origin,
         destination=clean_dest,
         return_origin=state.get("return_gateway") or None,
-        gateway_note=None,
+        gateway_note=gateway_note,
         flights=flight_items,
         return_flights=ret_items,
         hotels=hotel_items,
