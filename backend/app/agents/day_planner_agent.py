@@ -116,6 +116,3 @@ async def day_planner_agent_node(state: PlanMyTripState) -> dict[str, object]:
         "activity_options": activities,
         "selected_activity_ids": selected_ids,
     }
-
-
-itinerary_agent_node = day_planner_agent_node

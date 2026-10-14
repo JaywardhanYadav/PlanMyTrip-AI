@@ -34,8 +34,6 @@ const FOLDER_PHOTOS = [
   "assets/Edinburgh.jpg",
   "assets/France.jpg",
   "assets/Philippines.jpg",
-  "assets/img-1.png",
-  "assets/img-2.png",
   "assets/img-3.jpg",
   "assets/img-4.jpg",
   "assets/img-5.jpg",
@@ -80,41 +78,6 @@ function getSampleDateRange(dest) {
   if (d.includes("philippines")) return "12–18 Jan 2026";
   if (d.includes("goa")) return "12–16 Dec 2025";
   return "Flexible Dates";
-}
-
-function quickFillPrompt(destination) {
-  const input = document.getElementById("chat-input");
-  if (!input) return;
-
-  const d = (destination || "").toLowerCase();
-  if (d.includes("japan")) {
-    input.value = "Plan a 7 day cultural trip to Japan exploring Tokyo, Kyoto and Mt Fuji.";
-  } else if (d.includes("kerala")) {
-    input.value = "Plan a 5 day heritage trip to Kerala with temples, backwaters and local cuisine.";
-  } else if (d.includes("shimla") || d.includes("simila")) {
-    input.value = "Plan a 4 day scenic mountain getaway to Shimla with heritage sites and nature walks.";
-  } else if (d.includes("philippines")) {
-    input.value = "Plan a 6 day tropical beach vacation to Philippines with island hopping and sunset cruise.";
-  } else if (d.includes("goa")) {
-    input.value = "Plan a 5 day trip to Goa for 2 people in December. I want beach, good hotels and sightseeing.";
-  } else if (d.includes("edinburgh")) {
-    input.value = "Plan a 5 day trip to Edinburgh exploring the castle, Royal Mile and Scottish Highlands.";
-  } else if (d.includes("bali")) {
-    input.value = "Plan a 6 day cultural and adventure trip to Bali with temples, rice terraces and beaches.";
-  } else if (d.includes("france")) {
-    input.value = "Plan a 7 day trip to France covering Paris, the Eiffel Tower, Louvre and French Riviera.";
-  } else {
-    input.value = `Plan an exciting trip to ${destination} with top sights, hotels and flights.`;
-  }
-
-  const scrollArea = document.getElementById("main-scroll-area");
-  if (scrollArea) {
-    scrollArea.scrollTo({ top: scrollArea.scrollHeight, behavior: "smooth" });
-  }
-  if (typeof autoResizeChatInput === "function") {
-    autoResizeChatInput(input);
-  }
-  input.focus();
 }
 
 function applyQuickPrompt(promptText) {

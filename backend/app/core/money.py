@@ -164,38 +164,11 @@ class Money(BaseModel):
             currency=currency,
         )
 
-    @classmethod
-    def from_str(
-        cls,
-        amount_str: str,
-        currency: str = "INR",
-    ) -> "Money":
-        dec_amount = parse_indian_budget_decimal(amount_str)
-        return cls(
-            amount=dec_amount,
-            currency=currency,
-        )
-
     def to_formatted_str(self) -> str:
         if self.currency == "INR":
             return format_inr_amount(self.amount)
         formatted_amount = f"{self.amount:,.2f}"
         return f"{formatted_amount} {self.currency}"
-
-    def to_words(self) -> str:
-        if self.currency != "INR":
-            return self.to_formatted_str()
-        abs_val = abs(self.amount)
-        if abs_val >= ONE_CRORE:
-            cr_val = abs_val / ONE_CRORE
-            return f"{cr_val:.2f}".rstrip("0").rstrip(".") + " Crore INR"
-        elif abs_val >= ONE_LAKH:
-            lakh_val = abs_val / ONE_LAKH
-            return f"{lakh_val:.2f}".rstrip("0").rstrip(".") + " Lakh INR"
-        elif abs_val >= ONE_THOUSAND:
-            k_val = abs_val / ONE_THOUSAND
-            return f"{k_val:.2f}".rstrip("0").rstrip(".") + " Thousand INR"
-        return format_inr_amount(self.amount)
 
 
 class BudgetReconciliation(BaseModel):

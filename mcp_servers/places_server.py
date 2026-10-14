@@ -262,7 +262,7 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
         neighborhood = str(args.get("neighborhood", "")).strip() or None
         check_in = str(args.get("check_in_date", "2026-10-19"))
         check_out = str(args.get("check_out_date", "2026-10-23"))
-        nights = int(args.get("nights", 4))
+        nights = int(str(args.get("nights", 4)))
 
         cache_key = f"{destination}_{neighborhood or 'central'}_{check_in}_{check_out}_{nights}"
         if cache_key in _HOTEL_CACHE:

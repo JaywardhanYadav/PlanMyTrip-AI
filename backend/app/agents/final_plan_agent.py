@@ -403,6 +403,3 @@ async def final_plan_agent_node(state: PlanMyTripState) -> dict[str, object]:
         "messages": [AIMessage(content=rendered_markdown)],
         "next_step": "complete",
     }
-
-
-synthesis_agent_node = final_plan_agent_node

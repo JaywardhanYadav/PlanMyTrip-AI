@@ -82,7 +82,7 @@ async def resume_hitl(
             "selected_hotel_id": req.selected_hotel_id,
         }
 
-        await graph.aupdate_state(config, {"human_feedback": feedback}, as_node="supervisor")
+        await graph.aupdate_state(config, {"human_feedback": feedback})
         res = await graph.ainvoke(None, config=config)
 
         draft = res.get("itinerary_draft", "")

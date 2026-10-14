@@ -18,13 +18,6 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 _FLIGHT_CACHE: dict[str, list[dict[str, Any]]] = {}
 
 
-class SearchFlightsRequest(BaseModel):
-    origin: str = Field(min_length=3, max_length=3)
-    destination: str = Field(min_length=3, max_length=3)
-    departure_date: str
-    adults: int = Field(default=1, ge=1)
-
-
 class FlightLegSchema(BaseModel):
     origin_iata: str
     destination_iata: str
@@ -322,7 +315,7 @@ async def call_tool(call: ToolCallRequest) -> dict[str, object]:
     origin = str(args.get("origin", "BOM")).upper()
     destination = str(args.get("destination", "AMD")).upper()
     departure_date = str(args.get("departure_date", "2026-10-19"))
-    adults = int(args.get("adults", 1))
+    adults = int(str(args.get("adults", 1)))
 
     cache_key = f"{origin}_{destination}_{departure_date}_{adults}"
     if cache_key in _FLIGHT_CACHE:

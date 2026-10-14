@@ -303,12 +303,6 @@ function handleSSEEvent(type, data, messageDiv) {
   }
 }
 
-function renderOptionsGrid() {}
-
-function selectFlightOption(optionId) {}
-
-function selectHotelOption(optionId) {}
-
 function approvePlan() {
   resumeWithFeedback("approve", {});
 }
