@@ -358,14 +358,15 @@ function appendUserMessage(text) {
 
   const name = localStorage.getItem("planmytrip_name") || "T";
   const initial = name.charAt(0).toUpperCase();
+  const cleanText = (text || "").trim();
 
   userWrap.innerHTML = `
     <div class="message-bubble message-user-bubble">
-      ${escapeHtml(text)}
+      <div class="message-user-text">${escapeHtml(cleanText)}</div>
       <div class="message-time">${formatCurrentTime()}</div>
     </div>
     <div class="chat-user-avatar">${initial}</div>
-  `;
+  `.trim();
 
   container.appendChild(userWrap);
   scrollChatToBottom();

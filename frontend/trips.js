@@ -289,13 +289,28 @@ async function loadTripMessages(tripId, destination) {
           if (msg.role === "user") {
             const userWrap = document.createElement("div");
             userWrap.className = "message-user-wrap";
+            const cleanText = (msg.content || "").trim();
+            let timeLabel = "Just now";
+            if (msg.created_at) {
+              try {
+                const d = new Date(msg.created_at);
+                let hours = d.getHours();
+                const minutes = d.getMinutes();
+                const ampm = hours >= 12 ? "PM" : "AM";
+                hours = hours % 12 || 12;
+                const minsStr = minutes < 10 ? "0" + minutes : minutes;
+                timeLabel = `${hours}:${minsStr} ${ampm}`;
+              } catch (e) {
+                timeLabel = "Just now";
+              }
+            }
             userWrap.innerHTML = `
               <div class="message-bubble message-user-bubble">
-                ${escapeHtml(msg.content)}
-                <div class="message-time">Just now</div>
+                <div class="message-user-text">${escapeHtml(cleanText)}</div>
+                <div class="message-time">${timeLabel}</div>
               </div>
               <div class="chat-user-avatar">${initial}</div>
-            `;
+            `.trim();
             chatMessages.appendChild(userWrap);
           } else {
             const agentWrap = document.createElement("div");
