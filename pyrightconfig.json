@@ -1,0 +1,19 @@
+{
+  "include": [
+    "backend/app",
+    "backend/scripts",
+    "mcp_servers",
+    "evaluations"
+  ],
+  "extraPaths": [
+    "backend"
+  ],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "backend"
+      ]
+    }
+  ]
+}

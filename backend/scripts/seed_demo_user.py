@@ -1,7 +1,10 @@
 import asyncio
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "backend")
+backend_dir = Path(__file__).resolve().parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 from sqlalchemy import select
 from app.core.database import async_session_factory, engine
@@ -20,6 +23,7 @@ async def seed() -> None:
         if not user:
             user = User(
                 email="demo@planmytrip.ai",
+                name="Demo User",
                 hashed_password=hash_password("password123"),
                 is_active=True,
             )
@@ -27,6 +31,9 @@ async def seed() -> None:
             await session.commit()
             print("Demo user created: demo@planmytrip.ai / password123")
         else:
+            if not user.name:
+                user.name = "Demo User"
+                await session.commit()
             print("Demo user already exists: demo@planmytrip.ai")
 
     await engine.dispose()

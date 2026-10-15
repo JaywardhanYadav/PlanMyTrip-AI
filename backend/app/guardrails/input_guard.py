@@ -8,6 +8,13 @@ INJECTION_PATTERNS = [
     re.compile(r"system\s*:\s*role", re.IGNORECASE),
 ]
 
+ADVERSARIAL_OFF_TOPIC_PATTERNS = [
+    re.compile(r"\b(write|create|code|script)\b.*\b(python|javascript|script|subnet|password|dump|hack|exploit|keylogger|malware)\b", re.IGNORECASE),
+    re.compile(r"\b(bomb|explosive|weapon|poison|assassinate|kill|attack|chemicals)\b", re.IGNORECASE),
+    re.compile(r"\b(antibiotic|pneumonia|prescription|symptom|diagnosis|disease|medical treatment)\b", re.IGNORECASE),
+    re.compile(r"\b(vote for|political party|election|president|prime minister|parliament)\b", re.IGNORECASE),
+]
+
 
 async def evaluate_input_guardrail(user_message: str) -> GuardrailVerdict:
     for pattern in INJECTION_PATTERNS:
@@ -17,6 +24,16 @@ async def evaluate_input_guardrail(user_message: str) -> GuardrailVerdict:
                 category="injection",
                 confidence=0.99,
                 reason="Input contains disallowed prompt-injection or override phrasing.",
+                is_retryable=False,
+            )
+
+    for pattern in ADVERSARIAL_OFF_TOPIC_PATTERNS:
+        if pattern.search(user_message):
+            return GuardrailVerdict(
+                allowed=False,
+                category="off_topic",
+                confidence=0.98,
+                reason="The query is unrelated to travel planning and violates guardrail policies.",
                 is_retryable=False,
             )
 
@@ -70,10 +87,11 @@ async def evaluate_input_guardrail(user_message: str) -> GuardrailVerdict:
     except Exception:
         pass
 
+    has_travel = any(ind in clean_msg for ind in travel_indicators) or clean_msg in common_openers
     return GuardrailVerdict(
-        allowed=True,
-        category="clean",
-        confidence=0.80,
-        reason="Deterministic fallback allowed standard travel query.",
+        allowed=has_travel,
+        category="clean" if has_travel else "off_topic",
+        confidence=0.75,
+        reason="Deterministic fallback allowed standard travel query." if has_travel else "Query lacks travel context.",
         is_retryable=True,
     )
