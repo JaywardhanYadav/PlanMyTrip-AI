@@ -360,6 +360,35 @@ curl http://localhost:8003/tools
 
 ---
 
+## Future Scope & Advanced Engineering Roadmap
+
+While PlanMyTrip AI currently excels at multi-agent itinerary synthesis, real-time API aggregation, and deterministic budget reconciliation, the platform's modular architecture is designed to support direct transaction execution and next-generation autonomous travel capabilities:
+
+### 1. Direct Airfare Ticketing & Interactive Seat Selection
+- **GDS & NDC API Integration**: Direct integration with Global Distribution Systems (Amadeus, Sabre) and airline New Distribution Capability (NDC APIs / Duffel) to execute end-to-end PNR generation and e-ticket issuance directly inside the platform.
+- **Interactive Aircraft Seat Map**: In-chat SVG/Canvas seat selection enabling travelers to choose window/aisle seats, extra legroom, baggage add-ons, and in-flight dietary meal preferences (Hindu Meal, Jain Meal, Vegan) with live airline pricing.
+
+### 2. Autonomous Hotel Booking & Instant Reservation Confirmation
+- **Direct PMS & Channel Manager Connectivity**: Integration with Booking.com / Expedia Partner Solutions (EPS) to reserve rooms with instant confirmation numbers and downloadable PDF vouchers.
+- **Automated Concierge Coordination**: Direct dispatch of guest preferences (early check-in, high floor, non-smoking, twin/king bedding) and automated digital room key delivery to the user's mobile app.
+
+### 3. Real-Time Autonomous Disruption Recovery (Self-Healing Itineraries)
+- **Flight Delay & Cancellation Webhooks**: Real-time telemetry via AviationStack / FlightAware webhooks.
+- **Autonomous Rescheduling Loop**: If an inbound flight is delayed or diverted by 3+ hours, the LangGraph supervisor autonomously shifts Day-1 sightseeing, alerts the hotel front desk regarding late check-in, and reschedules local cab pickups without human intervention.
+
+### 4. Split-Payment & Collaborative Group Travel
+- **Multi-Payer Split Checkout**: Dynamic bill splitting across traveling companions via UPI AutoPay, Razorpay, or Stripe split-tender links with instant payment status tracking.
+- **Collaborative Group Canvas**: Multi-user shared trip sessions allowing friends to vote on hotel options, suggest daytime attractions, and manage a synchronized group packing checklist in real time.
+
+### 5. Multimodal Voice & On-Trip WhatsApp Concierge
+- **Voice-Activated Mobile Assistant**: Ultra-low-latency voice interface powered by Whisper and ElevenLabs for hands-free on-trip guidance (*"What is the best café near my current location open right now?"*).
+- **WhatsApp / Telegram Travel Bot**: Automated delivery of daily schedules, boarding passes, weather alerts, and cab driver details straight to WhatsApp every morning.
+
+### 6. Loyalty Points & Miles Optimization Engine
+- **Frequent Flyer & Credit Card Points Arbitrage**: Dynamic calculation engine optimizing co-branded card rewards (Amex, Axis Atlas, Club Vistara, Marriott Bonvoy points) to maximize points redemption against flight and hotel cash bookings.
+
+---
+
 ## Security Notice & Non-Goals
 
 - **Indicative Estimates Only**: This system generates travel plans and price estimations. It does not execute live bookings, charge cards, or store banking credentials.
