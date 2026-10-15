@@ -251,6 +251,7 @@ PlanMyTrip-AI/
 │   └── places_server.py             # SerpApi Google Hotels MCP server (Port 8003)
 ├── docker-compose.yml               # PostgreSQL 16 & Redis 7 container specs
 ├── run_all.py                       # Single-command orchestrator for all services
+├── SECURITY.md                      # Security policies, safeguards, and vulnerability disclosure
 └── README.md
 ```
 
@@ -364,3 +365,4 @@ curl http://localhost:8003/tools
 - **Indicative Estimates Only**: This system generates travel plans and price estimations. It does not execute live bookings, charge cards, or store banking credentials.
 - **Zero PII Storage**: The system only stores the user's login email and hashed password (`bcrypt`).
 - **Secret Discipline**: Sensitive API keys and tokens are stored exclusively in `.env` and excluded from version control via `.gitignore`.
+- **Security Policy & Reporting**: For comprehensive architecture safeguards, response SLAs, and vulnerability disclosure procedures, please see [SECURITY.md](SECURITY.md).
