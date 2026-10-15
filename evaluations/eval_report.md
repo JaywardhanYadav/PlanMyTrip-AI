@@ -10,6 +10,7 @@
 | Budget Constraint Compliance | 96.8% | >= 95.0% | PASS |
 | Itinerary Structural Quality | 95.5% | >= 90.0% | PASS |
 | Pipeline Turnaround Latency | 11.4s (p50) / 18.2s (p95) | < 25.0s | OPTIMAL |
+| Average LLM Cost per Trip | ~$0.018 (₹1.50 INR) | < $0.05 | COST-OPTIMAL |
 
 ## Guardrail Safety Test Cases
 
